@@ -10,7 +10,10 @@ func main() {
 	// Get the local IP address
 	localIP := networking.LocalIPResolver()
 
+	log.Printf("Local IP: %s\n", localIP.String())
+
 	ipNet, err := networking.FindSubnetForIP(localIP)
+
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -18,21 +21,21 @@ func main() {
 
 	log.Printf("ip net: %s\n", ipNet.IP.String())
 
-	networking.GetIPRange(ipNet)
+	networkIps := networking.GetIPRange(ipNet)
 
-	/*
-		for _, ip := range ips {
+	for _, ip := range networkIps {
+		if ip.Equal(localIP) {
+			continue
 		}
-	*/
 
-	host := "10.0.0.237"
-	pingResult, err := networking.ResolvePing(host)
+		log.Printf("Pinging %s\n", ip.String())
 
-	if err != nil {
-		log.Fatal(err)
+		pingResult, err := networking.ResolvePing(ip.String())
+
+		if err != nil {
+			continue
+		}
+
+		log.Printf("Ping to %s took %v\n", ip, pingResult.Duration)
 	}
-
-	log.Printf("Ping to %s took %v\n", host, pingResult.Duration)
-
-	// todo https://chatgpt.com/c/20e7fa88-7a13-478d-9852-e75708328a47
 }

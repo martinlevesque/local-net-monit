@@ -20,10 +20,13 @@ type PingResult struct {
 
 func ResolvePing(host string) (PingResult, error) {
 	c, err := icmp.ListenPacket("udp4", "0.0.0.0")
+
 	if err != nil {
-		log.Fatal(err)
+		return PingResult{}, err
 	}
+
 	defer c.Close()
+
 	// Generate an Echo message
 	msg := &icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
@@ -35,30 +38,40 @@ func ResolvePing(host string) (PingResult, error) {
 		},
 	}
 	wb, err := msg.Marshal(nil)
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	// Send, note that here it must be a UDP address
 	start := time.Now()
+
 	if _, err := c.WriteTo(wb, &net.UDPAddr{IP: net.ParseIP(host)}); err != nil {
 		log.Fatal(err)
 	}
+
 	// Read the reply package
-	reply := make([]byte, 1500)
+	reply := make([]byte, 500)
 	err = c.SetReadDeadline(time.Now().Add(1 * time.Second))
+
 	if err != nil {
-		log.Fatal(err)
+		return PingResult{}, err
 	}
+
 	n, peer, err := c.ReadFrom(reply)
+
 	if err != nil {
-		log.Fatal(err)
+		return PingResult{}, err
 	}
+
 	duration := time.Since(start)
 	// The reply packet is an ICMP message, parsed first
 	msg, err = icmp.ParseMessage(protocolICMP, reply[:n])
+
 	if err != nil {
-		log.Fatal(err)
+		return PingResult{}, err
 	}
+
 	// Print Results
 	switch msg.Type {
 	case ipv4.ICMPTypeEchoReply: // If it is an Echo Reply message
