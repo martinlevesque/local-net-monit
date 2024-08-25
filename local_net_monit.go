@@ -1,41 +1,29 @@
 package main
 
 import (
-	"fmt"
 	"github.com/martinlevesque/local-net-monit/networking"
 	"log"
 )
 
 func main() {
-	// Get the local IP address
-	localIP := networking.LocalIPResolver()
+	networkChannelReader := make(chan networking.NetworkChange)
 
-	log.Printf("Local IP: %s\n", localIP.String())
-
-	ipNet, err := networking.FindSubnetForIP(localIP)
-
-	if err != nil {
-		fmt.Println(err)
-		return
+	networkScanner := networking.NetScanner{
+		NotifyChannel: networkChannelReader,
 	}
 
-	log.Printf("ip net: %s\n", ipNet.IP.String())
+	go networkScanner.Scan()
 
-	networkIps := networking.GetIPRange(ipNet)
+	for {
+		log.Println("Waiting for network changes")
 
-	for _, ip := range networkIps {
-		if ip.Equal(localIP) {
-			continue
+		select {
+		case change := <-networkChannelReader:
+			log.Println(change.Description)
+
+			if change.UpdatedNode != nil {
+				log.Printf("-- Updated node: %s\n", change.UpdatedNode.IP)
+			}
 		}
-
-		log.Printf("Pinging %s\n", ip.String())
-
-		pingResult, err := networking.ResolvePing(ip.String())
-
-		if err != nil {
-			continue
-		}
-
-		log.Printf("Ping to %s took %v\n", ip, pingResult.Duration)
 	}
 }
