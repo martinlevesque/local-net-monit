@@ -1,5 +1,5 @@
 
 boot:
-	go run ./local_net_monit.go
+	go run ./cmd/localNetMonit
 
 

@@ -3,6 +3,7 @@ package networking
 import (
 	"fmt"
 	"log"
+	"net"
 	"time"
 )
 
@@ -24,29 +25,50 @@ type NetScanner struct {
 
 func (ns *NetScanner) Scan() {
 	ns.NodeStatuses = make(map[string]Node)
+	lastFullScanLoop := time.Now()
+	lastFullScanLoop = lastFullScanLoop.Add(-5 * time.Minute)
 
 	for {
-		ns.scanLoop()
-		time.Sleep(2 * time.Second)
+		// Get the local IP address
+		localIP := LocalIPResolver()
+
+		ipNet, err := FindSubnetForIP(localIP)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		networkIps := GetIPRange(ipNet)
+
+		if time.Since(lastFullScanLoop) > 5*time.Minute {
+			log.Println("Full scan loop")
+			ns.scanLoop(localIP, networkIps)
+			lastFullScanLoop = time.Now()
+		} else {
+			log.Println("Partial scan loop")
+			ns.scanLoop(localIP, ns.currentNetworkIps())
+		}
+
+		time.Sleep(10 * time.Second)
 	}
 }
 
-func (ns *NetScanner) scanLoop() {
-	// Get the local IP address
-	localIP := LocalIPResolver()
+func (ns *NetScanner) currentNetworkIps() []net.IP {
+	var ipList []net.IP
 
-	log.Printf("Local IP: %s\n", localIP.String())
+	for _, node := range ns.NodeStatuses {
+		ip := net.ParseIP(node.IP)
 
-	ipNet, err := FindSubnetForIP(localIP)
-
-	if err != nil {
-		fmt.Println(err)
-		return
+		if ip != nil { // Make sure the IP is valid
+			ipList = append(ipList, ip)
+		}
 	}
 
-	log.Printf("ip net: %s\n", ipNet.IP.String())
+	return ipList
+}
 
-	networkIps := GetIPRange(ipNet)
+func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 
 	for _, ip := range networkIps {
 		if ip.Equal(localIP) {

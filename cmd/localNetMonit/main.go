@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/martinlevesque/local-net-monit/networking"
+	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"log"
 )
 
