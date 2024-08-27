@@ -120,5 +120,22 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 				DeletedNode: nil,
 			}
 		}
+
+		scanPorts(ip.String())
+	}
+}
+
+func scanPorts(ip string) {
+	for port := 1; port <= 65535; port++ {
+		log.Printf("Scanning port %d on %s\n", port, ip)
+	}
+
+	log.Printf("Scanning ports on %s\n", ip)
+	if isUDPPortOpen(ip, 53) {
+		log.Printf("Port 53 is open on %s\n", ip)
+	}
+
+	if isTCPPortOpen(ip, 80) {
+		log.Printf("Port 80 is open on %s\n", ip)
 	}
 }
