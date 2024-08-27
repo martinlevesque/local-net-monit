@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestResolvePing_Success(t *testing.T) {
+func TestNetworkingResolvePing_Success(t *testing.T) {
 	host := "127.0.0.1"
 
 	result, err := networking.ResolvePing(host)
@@ -21,10 +21,11 @@ func TestResolvePing_Success(t *testing.T) {
 	t.Logf("Ping to %s successful with duration: %v", host, result.Duration)
 }
 
-func TestResolvePing_InvalidIP(t *testing.T) {
+func TestNetworkingResolvePing_InvalidIP(t *testing.T) {
 	host := "invalid-ip"
 
 	_, err := networking.ResolvePing(host)
+
 	if err == nil {
 		t.Fatal("expected an error due to invalid IP, but got nil")
 	}
