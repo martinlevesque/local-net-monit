@@ -128,6 +128,7 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 func scanPorts(ip string) {
 	for port := 1; port <= 65535; port++ {
 		if isTCPPortOpen(ip, port) {
+			// todo notify changes
 			log.Printf("Port tcp %d is open on %s\n", port, ip)
 		}
 	}
