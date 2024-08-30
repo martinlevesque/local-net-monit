@@ -1,14 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"github.com/martinlevesque/local-net-monit/internal/networking"
+	"github.com/martinlevesque/local-net-monit/internal/web"
 	"log"
-	"net/http"
 )
 
 func main() {
-	go bootstrapHttpServer()
+	go web.BootstrapHttpServer()
 
 	networkChannelReader := make(chan networking.NetworkChange)
 
@@ -30,16 +29,4 @@ func main() {
 			}
 		}
 	}
-}
-
-func bootstrapHttpServer() {
-	log.Println("Starting HTTP server")
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("GET /")
-		fmt.Fprint(w, "Hello, World!")
-	})
-
-	http.ListenAndServe(":8080", mux)
 }
