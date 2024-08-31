@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"context"
+	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
 	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"github.com/martinlevesque/local-net-monit/internal/web"
 	"strings"
@@ -32,7 +33,7 @@ func TestWebBootstrapHttpServer_Success(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	status, body := web.Get("", "/")
+	status, body := httpTooling.Get("", "/")
 
 	if status != "200 OK" {
 		t.Fatalf("expected status 200 OK, but got: %s", status)

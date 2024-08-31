@@ -23,6 +23,7 @@ type Node struct {
 type NetScanner struct {
 	NotifyChannel chan NetworkChange
 	NodeStatuses  map[string]*Node
+	PublicIP      string
 }
 
 func (ns *NetScanner) Scan() {
@@ -30,10 +31,23 @@ func (ns *NetScanner) Scan() {
 	lastFullScanLoop := time.Now()
 	lastFullScanLoop = lastFullScanLoop.Add(-5 * time.Minute)
 
-	// todo
-	// find next hop - https://github.com/aeden/traceroute/
+	publicIP, err := ResolverPublicIp()
+
+	if err != nil {
+		log.Fatalf("Failed to get public IP: %v", err)
+	}
+
+	ns.PublicIP = publicIP
 
 	for {
+		newPublicIP, err := ResolverPublicIp()
+
+		if err != nil {
+			log.Println("Failed to get public IP: ", err)
+		} else if newPublicIP != ns.PublicIP {
+			ns.PublicIP = newPublicIP
+		}
+
 		// Get the local IP address
 		localIP := LocalIPResolver()
 
