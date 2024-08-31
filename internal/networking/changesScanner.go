@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"slices"
 	"time"
 )
 
@@ -16,17 +17,21 @@ type NetworkChange struct {
 type Node struct {
 	IP               string
 	LastPingDuration time.Duration
+	Ports            []int
 }
 
 type NetScanner struct {
 	NotifyChannel chan NetworkChange
-	NodeStatuses  map[string]Node
+	NodeStatuses  map[string]*Node
 }
 
 func (ns *NetScanner) Scan() {
-	ns.NodeStatuses = make(map[string]Node)
+	ns.NodeStatuses = make(map[string]*Node)
 	lastFullScanLoop := time.Now()
 	lastFullScanLoop = lastFullScanLoop.Add(-5 * time.Minute)
+
+	// todo
+	// find next hop - https://github.com/aeden/traceroute/
 
 	for {
 		// Get the local IP address
@@ -87,7 +92,7 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 				ns.NotifyChannel <- NetworkChange{
 					Description: fmt.Sprintf("Node %s deleted", ip.String()),
 					UpdatedNode: nil,
-					DeletedNode: &node,
+					DeletedNode: node,
 				}
 			}
 
@@ -95,42 +100,52 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 		}
 
 		log.Printf("Ping to %s took %v\n", ip, pingResult.Duration)
+		var currrentNode *Node = nil
 
 		// Update the node status
 		if node, ok := ns.NodeStatuses[ip.String()]; ok {
 			node.LastPingDuration = pingResult.Duration
+			currrentNode = node
 			ns.NodeStatuses[ip.String()] = node
 
 			ns.NotifyChannel <- NetworkChange{
 				Description: fmt.Sprintf("Node %s updated", ip.String()),
-				UpdatedNode: &node,
+				UpdatedNode: node,
 				DeletedNode: nil,
 			}
 		} else {
-			node = Node{
+			node = &Node{
 				IP:               ip.String(),
 				LastPingDuration: pingResult.Duration,
+				Ports:            []int{},
 			}
 
 			ns.NodeStatuses[ip.String()] = node
+			currrentNode = node
 
 			ns.NotifyChannel <- NetworkChange{
 				Description: fmt.Sprintf("New node found: %s", ip.String()),
-				UpdatedNode: &node,
+				UpdatedNode: node,
 				DeletedNode: nil,
 			}
 		}
 
-		scanPorts(ip.String())
+		scanPorts(currrentNode)
 	}
 }
 
-func scanPorts(ip string) {
+func scanPorts(node *Node) {
+
 	for port := 1; port <= 65535; port++ {
-		if isTCPPortOpen(ip, port) {
+		if isTCPPortOpen(node.IP, port) {
 			// todo notify changes
-			log.Printf("Port tcp %d is open on %s\n", port, ip)
+			log.Printf("Port tcp %d is open on %s\n", port, node.IP)
+
+			if !slices.Contains(node.Ports, port) {
+				node.Ports = append(node.Ports, port)
+			}
+		} else {
+
 		}
 	}
-
 }

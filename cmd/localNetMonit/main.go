@@ -7,13 +7,13 @@ import (
 )
 
 func main() {
-	go web.BootstrapHttpServer()
-
 	networkChannelReader := make(chan networking.NetworkChange)
 
 	networkScanner := networking.NetScanner{
 		NotifyChannel: networkChannelReader,
 	}
+
+	go web.BootstrapHttpServer(&networkScanner)
 
 	go networkScanner.Scan()
 

@@ -2,37 +2,44 @@ package web
 
 import (
 	"fmt"
+	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"html/template"
 	"log"
 	"net/http"
+	"path/filepath"
+	"runtime"
 )
 
-func prepareTemplates() map[string]*template.Template {
-	tmpl := make(map[string]*template.Template)
+func PrepareTemplates() map[string]*template.Template {
+	_, root_path, _, _ := runtime.Caller(0)
+	templates_dir := filepath.Join(filepath.Dir(root_path), "../..", "templates")
+	templates := make(map[string]*template.Template)
 
-	tmpl["templates/index.html"] = template.Must(template.ParseFiles("templates/index.html"))
+	templates_list := []string{"index.html"}
 
-	return tmpl
+	for _, template_name := range templates_list {
+		templates[template_name] = template.Must(template.ParseFiles(filepath.Join(templates_dir, template_name)))
+	}
+
+	return templates
 }
 
-func BootstrapHttpServer() {
+func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 	port := 8080
 	serverAddress := fmt.Sprintf(":%d", port)
 
-	templates := prepareTemplates()
+	templates := PrepareTemplates()
 
 	log.Println("Starting HTTP server at", serverAddress)
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		queryParamsP := r.URL.Query().Get("p")
 		log.Println("GET /")
-		tmpl := templates["templates/index.html"]
-		//fmt.Fprint(w, "Hello, World!")
+		tmpl := templates["index.html"]
 		data := struct {
-			Items []string
+			NetScanner *networking.NetScanner
 		}{
-			Items: []string{"item1", "item2", "item3", queryParamsP},
+			NetScanner: netScanner,
 		}
 
 		err := tmpl.Execute(w, data)
@@ -42,5 +49,16 @@ func BootstrapHttpServer() {
 		}
 	})
 
-	http.ListenAndServe(serverAddress, mux)
+	server := &http.Server{
+		Addr:    serverAddress,
+		Handler: mux,
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server ListenAndServe: %v", err)
+		}
+	}()
+
+	return server
 }

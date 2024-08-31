@@ -1,8 +1,8 @@
 
-boot:
+dev:
 	go run ./cmd/localNetMonit
 
-test:
-	go test -v ./...
+test-dev:
+	find . -name '*.go' | entr -r go test -v ./...
 
 
