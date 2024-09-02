@@ -1,25 +1,61 @@
 <html>
 <head>
 	<title>Local Net Monit</title>
+
+	<style>
+		/* charcoal dark background */
+		body {
+			background-color: #333;
+			color: #ddd;
+			font-family: Arial, sans-serif;
+		}
+
+		/* Horizontal line at 33% from the top */
+		.horizontal-line {
+			position: absolute;
+			top: 33%;
+			width: 100%;
+			border-top: 2px solid black;
+		}
+
+		.title-top {
+			text-align: center;
+			font-size: 24px;
+			margin-top: 20px;
+		}
+
+		.title-local-network {
+			position: absolute;
+			top: calc(33% + 10px); /* Positioning below the line */
+			left: 50%;
+			transform: translateX(-50%);
+			font-size: 24px;
+		}
+	</style>
 </head>
 <body>
-		<div>
-			<ul>
-				{{range $ip, $node := .NetScanner.NodeStatuses }}
-				<li>
-					{{$ip}}
-					<ul>
-						{{range $port := $node.Ports}}
-						<li>
-							{{$port}}
-						</li>
-						{{end}}
+	<div class="title-top">Internet ({{ .NetScanner.PublicNode.IP }})</div>
+	<div class="title-local-network">Local Network</div>
 
-					</ul>
-				</li>
-				{{end}}
-			</ul>
-		</div>
+	<!-- Horizontal line at 33% from the top -->
+	<div class="horizontal-line"></div>
+	<div>
+		<ul>
+			{{range $ip, $node := .NetScanner.NodeStatuses }}
+			<li>
+				{{$ip}}
+				<ul>
+					{{range $port := $node.Ports}}
+					<li>
+						{{$port}}
+					</li>
+					{{end}}
+
+				</ul>
+			</li>
+			{{end}}
+		</ul>
+	</div>
 
 </body>
 </html>

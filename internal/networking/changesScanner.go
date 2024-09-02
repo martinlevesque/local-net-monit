@@ -8,10 +8,21 @@ import (
 	"time"
 )
 
+type NetworkChangeType string
+
+const (
+	NetworkChangeTypeNodeUpdated   NetworkChangeType = "NodeUpdated"
+	NetworkChangeTypeNodeDeleted   NetworkChangeType = "NodeDeleted"
+	NetworkChangePortUpdated       NetworkChangeType = "PortUpdated"
+	NetworkChangePublicNodeUpdated NetworkChangeType = "PublicNodeUpdated"
+)
+
 type NetworkChange struct {
+	ChangeType  NetworkChangeType
 	Description string
 	UpdatedNode *Node
 	DeletedNode *Node
+	PublicNode  *Node // the public/Internet IP node
 }
 
 type Node struct {
@@ -23,7 +34,7 @@ type Node struct {
 type NetScanner struct {
 	NotifyChannel chan NetworkChange
 	NodeStatuses  map[string]*Node
-	PublicIP      string
+	PublicNode    *Node
 }
 
 func (ns *NetScanner) Scan() {
@@ -37,15 +48,20 @@ func (ns *NetScanner) Scan() {
 		log.Fatalf("Failed to get public IP: %v", err)
 	}
 
-	ns.PublicIP = publicIP
+	ns.PublicNode = &Node{
+		IP:               publicIP,
+		Ports:            []int{},
+		LastPingDuration: time.Duration(0),
+	}
 
 	for {
 		newPublicIP, err := ResolverPublicIp()
 
 		if err != nil {
 			log.Println("Failed to get public IP: ", err)
-		} else if newPublicIP != ns.PublicIP {
-			ns.PublicIP = newPublicIP
+		} else if newPublicIP != ns.PublicNode.IP {
+			ns.PublicNode.IP = newPublicIP
+			// todo: notify changes
 		}
 
 		// Get the local IP address
@@ -104,6 +120,7 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 				delete(ns.NodeStatuses, ip.String())
 
 				ns.NotifyChannel <- NetworkChange{
+					ChangeType:  NetworkChangeTypeNodeDeleted,
 					Description: fmt.Sprintf("Node %s deleted", ip.String()),
 					UpdatedNode: nil,
 					DeletedNode: node,
@@ -123,6 +140,7 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 			ns.NodeStatuses[ip.String()] = node
 
 			ns.NotifyChannel <- NetworkChange{
+				ChangeType:  NetworkChangeTypeNodeUpdated,
 				Description: fmt.Sprintf("Node %s updated", ip.String()),
 				UpdatedNode: node,
 				DeletedNode: nil,
@@ -138,6 +156,7 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 			currrentNode = node
 
 			ns.NotifyChannel <- NetworkChange{
+				ChangeType:  NetworkChangeTypeNodeUpdated,
 				Description: fmt.Sprintf("New node found: %s", ip.String()),
 				UpdatedNode: node,
 				DeletedNode: nil,
