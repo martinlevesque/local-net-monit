@@ -1,21 +1,23 @@
 package httpTooling
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 )
 
 func Get(baseUrl string, path string) (string, string) {
-	var requesthToHost string
+	var requesToHost string
 
 	if baseUrl == "" {
-		requesthToHost = "http://localhost:8080"
+		requesToHost = "http://localhost:8080"
 	} else {
-		requesthToHost = baseUrl
+		requesToHost = baseUrl
 	}
 
-	requesthTo := requesthToHost + path
+	requesthTo := requesToHost + path
 
 	resp, err := http.Get(requesthTo)
 
@@ -32,4 +34,39 @@ func Get(baseUrl string, path string) (string, string) {
 	}
 
 	return resp.Status, string(body)
+}
+
+func Post(baseUrl string, path string, body map[string]interface{}) (string, string, error) {
+	var requestToHost string
+
+	if baseUrl == "" {
+		requestToHost = "http://localhost:8080"
+	} else {
+		requestToHost = baseUrl
+	}
+
+	requestTo := requestToHost + path
+
+	json_data, err := json.Marshal(body)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	resp, err := http.Post(requestTo, "application/json",
+		bytes.NewBuffer(json_data))
+
+	if err != nil {
+		return "", "", err
+	}
+
+	defer resp.Body.Close()
+
+	resBody, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	return resp.Status, string(resBody), nil
 }

@@ -64,6 +64,10 @@ func (ns *NetScanner) Scan() {
 			// todo: notify changes
 		}
 
+		log.Println("Scanning ports for public IP")
+		resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, 32401)
+		log.Println("Public port 32401 is open: ", resultPublicOpen)
+
 		// Get the local IP address
 		localIP := LocalIPResolver()
 
@@ -168,7 +172,6 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 }
 
 func scanPorts(node *Node) {
-
 	for port := 1; port <= 65535; port++ {
 		if isTCPPortOpen(node.IP, port) {
 			// todo notify changes
@@ -178,7 +181,11 @@ func scanPorts(node *Node) {
 				node.Ports = append(node.Ports, port)
 			}
 		} else {
-
+			if slices.Contains(node.Ports, port) {
+				node.Ports = slices.DeleteFunc(node.Ports, func(i int) bool {
+					return i == port
+				})
+			}
 		}
 	}
 }

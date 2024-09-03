@@ -1,5 +1,5 @@
 
-dev:
+boot:
 	go run ./cmd/localNetMonit
 
 test-dev:
