@@ -65,7 +65,7 @@ func (ns *NetScanner) Scan() {
 		}
 
 		log.Println("Scanning ports for public IP")
-		resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, 32401)
+		resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, 32400)
 		log.Println("Public port 32401 is open: ", resultPublicOpen)
 
 		// Get the local IP address

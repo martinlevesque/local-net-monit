@@ -14,23 +14,17 @@ func IsPublicPortOpen(host string, port int) bool {
 	body["host"] = host
 	body["ports"] = []int{port}
 
-	log.Println("Checking public portttttt")
 	status, response, err := httpTooling.Post("https://portchecker.io/api/v1", "/query", body)
-	log.Println("Checked public portttttt 222")
 
 	if err != nil {
 		log.Println("Failed to check public port:", err)
 		return false
 	}
 
-	log.Println("Checkkk status", status)
-
 	if status != "200 OK" {
 		log.Println("Failed to check public port: ", status)
 		return false
 	}
-
-	log.Println("Checkkk response", response)
 
 	responseResult := make(map[string]interface{})
 
@@ -38,7 +32,6 @@ func IsPublicPortOpen(host string, port int) bool {
 
 	if checkResult, ok := responseResult["check"]; ok {
 		if len(checkResult.([]interface{})) > 0 {
-			log.Println("Checkkk result", checkResult.([]interface{})[0])
 			return checkResult.([]interface{})[0].(map[string]interface{})["status"] == true
 		}
 	}
