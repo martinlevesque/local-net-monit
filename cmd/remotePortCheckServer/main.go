@@ -90,7 +90,7 @@ func main() {
 		json.NewEncoder(w).Encode(response)
 	})
 
-	mux.HandleFunc("POST /check", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /query", func(w http.ResponseWriter, r *http.Request) {
 
 		type Request struct {
 			Host string `json:"host"`
@@ -110,8 +110,11 @@ func main() {
 			return
 		}
 
+		log.Println("POST /query", request)
+
 		// Check if the host is reachable
-		_, err = net.Dial("tcp", fmt.Sprintf("%s:%d", request.Host, request.Port))
+		timeout := 1000 * time.Millisecond
+		_, err = net.DialTimeout("tcp", fmt.Sprintf("%s:%d", request.Host, request.Port), timeout)
 
 		if err != nil {
 			http.Error(w, "Host is not reachable", http.StatusServiceUnavailable)

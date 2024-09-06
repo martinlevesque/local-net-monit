@@ -5,24 +5,23 @@ package networking
 import (
 	"encoding/json"
 	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
-	"log"
 )
 
 func IsPublicPortOpen(host string, port int) bool {
+	remote_port_checker_base_url := "http://localhost:8081"
+
 	body := make(map[string]interface{})
 
 	body["host"] = host
-	body["ports"] = []int{port}
+	body["port"] = port
 
-	status, response, err := httpTooling.Post("https://portchecker.io/api/v1", "/query", body)
+	status, response, err := httpTooling.Post(remote_port_checker_base_url, "/query", body)
 
 	if err != nil {
-		log.Println("Failed to check public port:", err)
 		return false
 	}
 
 	if status != "200 OK" {
-		log.Println("Failed to check public port: ", status)
 		return false
 	}
 
@@ -30,10 +29,8 @@ func IsPublicPortOpen(host string, port int) bool {
 
 	json.Unmarshal([]byte(response), &responseResult)
 
-	if checkResult, ok := responseResult["check"]; ok {
-		if len(checkResult.([]interface{})) > 0 {
-			return checkResult.([]interface{})[0].(map[string]interface{})["status"] == true
-		}
+	if checkResult, ok := responseResult["status"]; ok {
+		return checkResult == "reachable"
 	}
 
 	return false

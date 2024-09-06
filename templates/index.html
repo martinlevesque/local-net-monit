@@ -31,14 +31,112 @@
 			transform: translateX(-50%);
 			font-size: 24px;
 		}
+
+		/*
+		.port-boxes {
+		    position: absolute;
+		    top: calc(33% - 40px);
+		    left: 50%;
+		    transform: translateX(-50%);
+		    display: flex;
+		    gap: 10px;
+		}
+
+		.port-box {
+		    background-color: #555;
+		    padding: 10px;
+		    border: 1px solid #999;
+		    border-radius: 5px;
+		    color: white;
+		    font-size: 14px;
+		}
+		*/
+
+		.port-boxes {
+		    position: absolute;
+		    top: calc(33% - 80px); /* Adjust the vertical position above the line */
+		    left: 50%;
+		    transform: translateX(-50%);
+		    display: flex;
+		    gap: 20px; /* Space between boxes */
+		}
+
+		/* Styling for Ethernet-like port box */
+		.port-box {
+		    width: 70px;
+		    height: 60px;
+		    background-color: #222;
+		    border: 3px solid #888; /* Simulating a metallic border */
+		    border-radius: 3px;
+		    position: relative;
+		    display: flex;
+		    justify-content: center;
+		    align-items: center;
+		    color: white;
+		    font-size: 15px;
+		    text-align: center;
+		}
+
+		/* Simulating port "keyhole" slots at the bottom */
+		.port-box::before {
+		    content: '';
+		    position: absolute;
+		    bottom: 5px;
+		    left: 50%;
+		    transform: translateX(-50%);
+		    width: 20px;
+		    height: 5px;
+		    background-color: green; /* Darker area representing the socket holes */
+		    border-radius: 2px;
+		}
+
+		.port-box-warning::before {
+		    content: '';
+		    position: absolute;
+		    bottom: 5px;
+		    left: 50%;
+		    transform: translateX(-50%);
+		    width: 20px;
+		    height: 5px;
+		    background-color: red; /* Darker area representing the socket holes */
+		    border-radius: 2px;
+		}
+
+		/* Simulating the plastic shield on top */
+		.port-box::after {
+		    content: '';
+		    position: absolute;
+		    top: 0;
+		    left: 0;
+		    width: 100%;
+		    height: 50%;
+		    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2), transparent);
+		    border-top-left-radius: 2px;
+		    border-top-right-radius: 2px;
+		}
 	</style>
 </head>
 <body>
 	<div class="title-top">Internet ({{ .NetScanner.PublicNode.IP }})</div>
 	<div class="title-local-network">Local Network</div>
+	
+	<div class="port-boxes">
+		{{range $port := .NetScanner.PublicNode.Ports }}
+			{{ if eq $port.Verified true }}
+				<div class="port-box">Port {{ $port.PortNumber }}</div>
+			{{ else }}
+				<div class="port-box port-box-warning">Port {{ $port.PortNumber }}</div>
+			{{ end }}
+		{{end}}
+		<div class="port-box">Port 12345</div>
+		<div class="port-box">Port 54321</div>
+		<div class="port-box port-box-warning">Port 54321</div>
+		<div class="port-box">Port 54321</div>
 
-	<!-- Horizontal line at 33% from the top -->
+	</div>
+
 	<div class="horizontal-line"></div>
+	<!--
 	<div>
 		<ul>
 			{{range $ip, $node := .NetScanner.NodeStatuses }}
@@ -56,6 +154,7 @@
 			{{end}}
 		</ul>
 	</div>
+	-->
 
 </body>
 </html>

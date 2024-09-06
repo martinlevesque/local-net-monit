@@ -25,10 +25,15 @@ type NetworkChange struct {
 	PublicNode  *Node // the public/Internet IP node
 }
 
+type Port struct {
+	PortNumber int
+	Verified   bool
+}
+
 type Node struct {
 	IP               string
 	LastPingDuration time.Duration
-	Ports            []int
+	Ports            []Port
 }
 
 type NetScanner struct {
@@ -50,23 +55,12 @@ func (ns *NetScanner) Scan() {
 
 	ns.PublicNode = &Node{
 		IP:               publicIP,
-		Ports:            []int{},
+		Ports:            []Port{},
 		LastPingDuration: time.Duration(0),
 	}
 
 	for {
-		newPublicIP, err := ResolverPublicIp()
-
-		if err != nil {
-			log.Println("Failed to get public IP: ", err)
-		} else if newPublicIP != ns.PublicNode.IP {
-			ns.PublicNode.IP = newPublicIP
-			// todo: notify changes
-		}
-
-		log.Println("Scanning ports for public IP")
-		resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, 32400)
-		log.Println("Public port 32401 is open: ", resultPublicOpen)
+		ns.scanPublicNodePorts()
 
 		// Get the local IP address
 		localIP := LocalIPResolver()
@@ -90,6 +84,45 @@ func (ns *NetScanner) Scan() {
 		}
 
 		time.Sleep(10 * time.Second)
+	}
+}
+
+func portExistsInList(port int, ports []Port) bool {
+	return slices.ContainsFunc(ports, func(p Port) bool {
+		return p.PortNumber == port
+	})
+}
+
+func (ns *NetScanner) scanPublicNodePorts() {
+	newPublicIP, err := ResolverPublicIp()
+
+	if err != nil {
+		log.Println("Failed to get public IP: ", err)
+	} else if newPublicIP != ns.PublicNode.IP {
+		ns.PublicNode.IP = newPublicIP
+	}
+
+	for port := 1; port <= 65535; port++ {
+		resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, port)
+
+		if resultPublicOpen {
+			log.Printf("Port tcp %d is open on %s\n", port, ns.PublicNode.IP)
+
+			if !portExistsInList(port, ns.PublicNode.Ports) {
+				ns.PublicNode.Ports = append(
+					ns.PublicNode.Ports,
+					Port{PortNumber: port, Verified: false},
+				)
+			}
+		} else {
+			if portExistsInList(port, ns.PublicNode.Ports) {
+				ns.PublicNode.Ports = slices.DeleteFunc(ns.PublicNode.Ports, func(p Port) bool {
+					return p.PortNumber == port
+				})
+			}
+		}
+
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 
@@ -153,7 +186,7 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 			node = &Node{
 				IP:               ip.String(),
 				LastPingDuration: pingResult.Duration,
-				Ports:            []int{},
+				Ports:            []Port{},
 			}
 
 			ns.NodeStatuses[ip.String()] = node
@@ -177,13 +210,16 @@ func scanPorts(node *Node) {
 			// todo notify changes
 			log.Printf("Port tcp %d is open on %s\n", port, node.IP)
 
-			if !slices.Contains(node.Ports, port) {
-				node.Ports = append(node.Ports, port)
+			if !portExistsInList(port, node.Ports) {
+				node.Ports = append(
+					node.Ports,
+					Port{PortNumber: port, Verified: false},
+				)
 			}
 		} else {
-			if slices.Contains(node.Ports, port) {
-				node.Ports = slices.DeleteFunc(node.Ports, func(i int) bool {
-					return i == port
+			if portExistsInList(port, node.Ports) {
+				node.Ports = slices.DeleteFunc(node.Ports, func(p Port) bool {
+					return p.PortNumber == port
 				})
 			}
 		}
