@@ -55,6 +55,7 @@
 		    color: white;
 		    font-size: 15px;
 		    text-align: center;
+		    cursor: pointer; /* Make it clickable */
 		}
 
 		/* Simulating port "keyhole" slots at the bottom */
@@ -95,7 +96,7 @@
 		    border-top-right-radius: 2px;
 		}
 
-		/* Styling for the list of IPs and their ports */
+		/* Styling for the IP table */
 		.ip-table-container {
 			position: absolute;
 			top: calc(33% + 60px); /* Adjust vertical position below the line */
@@ -141,7 +142,41 @@
 			max-width: 100%; /* Ensure ports don't overflow the column */
 		}
 
+		/* Popup modal */
+		.modal {
+			display: none; /* Hidden by default */
+			position: fixed;
+			z-index: 1;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.7); /* Black background with opacity */
+		}
 
+		.modal-content {
+			background-color: #444;
+			margin: 15% auto;
+			padding: 20px;
+			border: 1px solid #888;
+			width: 80%;
+			color: #fff;
+			text-align: center;
+		}
+
+		.close {
+			color: #aaa;
+			float: right;
+			font-size: 28px;
+			font-weight: bold;
+		}
+
+		.close:hover,
+		.close:focus {
+			color: #fff;
+			text-decoration: none;
+			cursor: pointer;
+		}
 	</style>
 </head>
 <body>
@@ -150,22 +185,18 @@
 	
 	<div class="port-boxes">
 		{{range $port := .NetScanner.PublicNode.Ports }}
-			{{ if eq $port.Verified true }}
-				<div class="port-box">Port {{ $port.PortNumber }}</div>
-			{{ else }}
-				<div class="port-box port-box-warning">Port {{ $port.PortNumber }}</div>
-			{{ end }}
+			<div class="port-box" onclick="openModal('Port {{ $port.PortNumber }} details: Verified: {{ $port.Verified }}')">
+				Port {{ $port.PortNumber }}
+			</div>
 		{{end}}
-		<div class="port-box">Port 12345</div>
-		<div class="port-box">Port 54321</div>
-		<div class="port-box port-box-warning">Port 54321</div>
-		<div class="port-box">Port 54321</div>
-
+			<div class="port-box" onclick="openModal({ portNumber: 1234, verified: false, notes: 'hello!' })">
+				Port 10100
+			</div>
 	</div>
 
 	<div class="horizontal-line"></div>
 
-	<!-- List of local IPs with their ports -->
+	<!-- IP table below the horizontal line -->
 
 	<div class="ip-table-container">
 		<table class="ip-table">
@@ -184,11 +215,9 @@
 					<td class="ports-column">
 						<div class="port-container">
 							{{range $port := $node.Ports }}
-								{{ if eq $port.Verified true }}
-									<div class="port-box">{{ $port.PortNumber }}</div>
-								{{ else }}
-									<div class="port-box port-box-warning">{{ $port.PortNumber }}</div>
-								{{ end }}
+								<div class="port-box" onclick="openModal('Port {{ $port.PortNumber }} details: Verified: {{ $port.Verified }}')">
+									{{ $port.PortNumber }}
+								</div>
 							{{end}}
 						</div>
 					</td>
@@ -198,8 +227,47 @@
 		</table>
 	</div>
 
+	<!-- Modal box for showing port details -->
+	<div id="portModal" class="modal">
+		<div class="modal-content">
+			<span class="close" onclick="closeModal()">&times;</span>
+			<h2 id="modal-title"></h2>
+
+			<div>
+				<label for="port-verified">Verified:</label>
+				<input type="checkbox" id="port-verified" name="port-verified" />
+			</div>
+
+			<div>
+				<label for="port-notes">Notes:</label>
+				<textarea id="port-notes" name="port-notes" rows="4" cols="50"></textarea>
+			</div>
+
+		</div>
+	</div>
 
 	<script>
+		// Function to open modal with the port info
+		function openModal(info) {
+			document.getElementById('modal-title').textContent = `Port ${info.portNumber} details`;
+			document.getElementById('port-verified').checked = info.verified;
+			document.getElementById('port-notes').textContent = info.notes;
+			document.getElementById('portModal').style.display = 'block';
+		}
+
+		// Function to close modal
+		function closeModal() {
+			document.getElementById('portModal').style.display = 'none';
+		}
+
+		// Close modal if user clicks outside of it
+		window.onclick = function(event) {
+			var modal = document.getElementById('portModal');
+			if (event.target == modal) {
+				modal.style.display = 'none';
+			}
+		}
 	</script>
+
 </body>
 </html>

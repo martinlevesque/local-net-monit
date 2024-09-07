@@ -28,6 +28,7 @@ type NetworkChange struct {
 type Port struct {
 	PortNumber int
 	Verified   bool
+	Notes      string
 }
 
 type Node struct {
@@ -215,7 +216,7 @@ func scanPorts(node *Node) {
 			if !portExistsInList(port, node.Ports) {
 				node.Ports = append(
 					node.Ports,
-					Port{PortNumber: port, Verified: false},
+					Port{PortNumber: port, Verified: false, Notes: ""},
 				)
 			}
 		} else {
