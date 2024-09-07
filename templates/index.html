@@ -32,26 +32,6 @@
 			font-size: 24px;
 		}
 
-		/*
-		.port-boxes {
-		    position: absolute;
-		    top: calc(33% - 40px);
-		    left: 50%;
-		    transform: translateX(-50%);
-		    display: flex;
-		    gap: 10px;
-		}
-
-		.port-box {
-		    background-color: #555;
-		    padding: 10px;
-		    border: 1px solid #999;
-		    border-radius: 5px;
-		    color: white;
-		    font-size: 14px;
-		}
-		*/
-
 		.port-boxes {
 		    position: absolute;
 		    top: calc(33% - 80px); /* Adjust the vertical position above the line */
@@ -114,6 +94,44 @@
 		    border-top-left-radius: 2px;
 		    border-top-right-radius: 2px;
 		}
+
+		/* Styling for the list of IPs and their ports */
+		.ip-list {
+			position: absolute;
+			top: calc(33% + 60px); /* Adjust vertical position below the line */
+			width: 100%;
+			padding: 20px;
+			box-sizing: border-box;
+		}
+
+		.ip-node {
+			margin-bottom: 20px;
+			text-align: center; /* Centering the IP node and its ports */
+		}
+
+		.ip-node-title {
+			width: 100px;
+			height: 100px;
+			background-color: #444;
+			border-radius: 50%;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			margin: 0 auto 10px;
+			font-size: 14px;
+			font-weight: bold;
+			color: #fff;
+			line-height: 1.2; /* Ensure IP fits within the circle */
+			word-wrap: break-word; /* Allow longer IP addresses to wrap */
+		}
+
+		.port-container {
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+			justify-content: center;
+		}
+
 	</style>
 </head>
 <body>
@@ -155,6 +173,27 @@
 		</ul>
 	</div>
 	-->
+
+	<!-- List of IPs with their ports -->
+
+	<div class="ip-list">
+		{{range $ip, $node := .NetScanner.NodeStatuses }}
+		<div class="ip-node">
+			<!-- Circle for IP -->
+			<div class="ip-node-title">{{ $ip }}</div>
+			<!-- Ports associated with the node -->
+			<div class="port-container">
+				{{range $port := $node.Ports }}
+					{{ if eq $port.Verified true }}
+						<div class="port-box">Port {{ $port.PortNumber }}</div>
+					{{ else }}
+						<div class="port-box port-box-warning">Port {{ $port.PortNumber }}</div>
+					{{ end }}
+				{{end}}
+			</div>
+		</div>
+		{{end}}
+	</div>
 
 </body>
 </html>

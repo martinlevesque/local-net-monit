@@ -60,7 +60,7 @@ func (ns *NetScanner) Scan() {
 	}
 
 	for {
-		ns.scanPublicNodePorts()
+		// ns.scanPublicNodePorts()
 
 		// Get the local IP address
 		localIP := LocalIPResolver()
