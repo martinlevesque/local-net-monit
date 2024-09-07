@@ -40,6 +40,7 @@ type NetScanner struct {
 	NotifyChannel chan NetworkChange
 	NodeStatuses  map[string]*Node
 	PublicNode    *Node
+	ScannerNode   *Node
 }
 
 func (ns *NetScanner) Scan() {
@@ -143,10 +144,6 @@ func (ns *NetScanner) currentNetworkIps() []net.IP {
 func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 
 	for _, ip := range networkIps {
-		if ip.Equal(localIP) {
-			continue
-		}
-
 		log.Printf("Pinging %s\n", ip.String())
 
 		pingResult, err := ResolvePing(ip.String())
@@ -167,7 +164,6 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 			continue
 		}
 
-		log.Printf("Ping to %s took %v\n", ip, pingResult.Duration)
 		var currrentNode *Node = nil
 
 		// Update the node status
@@ -200,7 +196,13 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 			}
 		}
 
-		scanPorts(currrentNode)
+		if localIP.Equal(ip) {
+			ns.ScannerNode = currrentNode
+		}
+	}
+
+	for _, node := range ns.NodeStatuses {
+		scanPorts(node)
 	}
 }
 

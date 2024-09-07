@@ -96,33 +96,41 @@
 		}
 
 		/* Styling for the list of IPs and their ports */
-		.ip-list {
+		.ip-table-container {
 			position: absolute;
 			top: calc(33% + 60px); /* Adjust vertical position below the line */
 			width: 100%;
-			padding: 20px;
-			box-sizing: border-box;
-		}
-
-		.ip-node {
-			margin-bottom: 20px;
-			text-align: center; /* Centering the IP node and its ports */
-		}
-
-		.ip-node-title {
-			width: 100px;
-			height: 100px;
-			background-color: #444;
-			border-radius: 50%;
 			display: flex;
 			justify-content: center;
-			align-items: center;
-			margin: 0 auto 10px;
-			font-size: 14px;
-			font-weight: bold;
+		}
+
+		.ip-table {
+			width: 80%;
+			border-collapse: collapse;
+			background-color: #444;
+			border: 1px solid #555;
+		}
+
+		.ip-table th, .ip-table td {
+			padding: 12px;
+			border: 1px solid #555;
+			text-align: center;
+		}
+
+		.ip-table th {
+			background-color: #555;
+			color: #ddd;
+		}
+
+		.ip-table td {
+			background-color: #333;
 			color: #fff;
-			line-height: 1.2; /* Ensure IP fits within the circle */
-			word-wrap: break-word; /* Allow longer IP addresses to wrap */
+		}
+
+		/* Max width limit for ports column */
+		.ip-table .ports-column {
+			max-width: 300px;
+			overflow-wrap: break-word; /* Ensure ports wrap if the content exceeds max width */
 		}
 
 		.port-container {
@@ -130,7 +138,9 @@
 			gap: 10px;
 			flex-wrap: wrap;
 			justify-content: center;
+			max-width: 100%; /* Ensure ports don't overflow the column */
 		}
+
 
 	</style>
 </head>
@@ -154,46 +164,42 @@
 	</div>
 
 	<div class="horizontal-line"></div>
-	<!--
-	<div>
-		<ul>
-			{{range $ip, $node := .NetScanner.NodeStatuses }}
-			<li>
-				{{$ip}}
-				<ul>
-					{{range $port := $node.Ports}}
-					<li>
-						{{$port}}
-					</li>
-					{{end}}
 
-				</ul>
-			</li>
-			{{end}}
-		</ul>
-	</div>
-	-->
+	<!-- List of local IPs with their ports -->
 
-	<!-- List of IPs with their ports -->
-
-	<div class="ip-list">
-		{{range $ip, $node := .NetScanner.NodeStatuses }}
-		<div class="ip-node">
-			<!-- Circle for IP -->
-			<div class="ip-node-title">{{ $ip }}</div>
-			<!-- Ports associated with the node -->
-			<div class="port-container">
-				{{range $port := $node.Ports }}
-					{{ if eq $port.Verified true }}
-						<div class="port-box">Port {{ $port.PortNumber }}</div>
-					{{ else }}
-						<div class="port-box port-box-warning">Port {{ $port.PortNumber }}</div>
-					{{ end }}
+	<div class="ip-table-container">
+		<table class="ip-table">
+			<thead>
+				<tr>
+					<th>IP Address</th>
+					<th>Latency (ms)</th>
+					<th>Ports</th>
+				</tr>
+			</thead>
+			<tbody>
+				{{range $ip, $node := .NetScanner.NodeStatuses }}
+				<tr>
+					<td>{{ $ip }}</td>
+					<td>{{ $node.LastPingDuration }}</td>
+					<td class="ports-column">
+						<div class="port-container">
+							{{range $port := $node.Ports }}
+								{{ if eq $port.Verified true }}
+									<div class="port-box">{{ $port.PortNumber }}</div>
+								{{ else }}
+									<div class="port-box port-box-warning">{{ $port.PortNumber }}</div>
+								{{ end }}
+							{{end}}
+						</div>
+					</td>
+				</tr>
 				{{end}}
-			</div>
-		</div>
-		{{end}}
+			</tbody>
+		</table>
 	</div>
 
+
+	<script>
+	</script>
 </body>
 </html>

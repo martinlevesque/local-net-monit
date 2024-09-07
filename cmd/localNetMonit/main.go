@@ -11,6 +11,7 @@ func main() {
 
 	networkScanner := networking.NetScanner{
 		NotifyChannel: networkChannelReader,
+		ScannerNode:   nil,
 	}
 
 	go web.BootstrapHttpServer(&networkScanner)

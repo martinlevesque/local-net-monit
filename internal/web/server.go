@@ -36,16 +36,26 @@ func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("GET /")
 		tmpl := templates["index.html"]
+
+		scannerNodeIP := ""
+
+		if netScanner.ScannerNode != nil {
+			scannerNodeIP = netScanner.ScannerNode.IP
+		}
+
 		data := struct {
-			NetScanner *networking.NetScanner
+			NetScanner    *networking.NetScanner
+			ScannerNodeIP string
 		}{
-			NetScanner: netScanner,
+			NetScanner:    netScanner,
+			ScannerNodeIP: scannerNodeIP,
 		}
 
 		err := tmpl.Execute(w, data)
 
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			log.Printf("template execution error: %v", err)
 		}
 	})
 
