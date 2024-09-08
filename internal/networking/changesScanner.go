@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -39,14 +40,14 @@ type Node struct {
 
 type NetScanner struct {
 	NotifyChannel   chan NetworkChange
-	NodeStatuses    map[string]*Node
+	NodeStatuses    sync.Map
 	PublicNode      *Node
 	ScannerNode     *Node
 	BroadcastChange func(string)
 }
 
 func (ns *NetScanner) Scan() {
-	ns.NodeStatuses = make(map[string]*Node)
+	ns.NodeStatuses = sync.Map{}
 	lastFullScanLoop := time.Now()
 	lastFullScanLoop = lastFullScanLoop.Add(-5 * time.Minute)
 
@@ -132,79 +133,104 @@ func (ns *NetScanner) scanPublicNodePorts() {
 func (ns *NetScanner) currentNetworkIps() []net.IP {
 	var ipList []net.IP
 
-	for _, node := range ns.NodeStatuses {
+	ns.NodeStatuses.Range(func(_, untypedNode interface{}) bool {
+		node := untypedNode.(*Node)
 		ip := net.ParseIP(node.IP)
 
 		if ip != nil { // Make sure the IP is valid
 			ipList = append(ipList, ip)
 		}
-	}
+
+		return true
+	})
 
 	return ipList
 }
 
 func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
+	ns.fullNetworkPings(localIP, networkIps)
 
+	ns.NodeStatuses.Range(func(_, untypedNode any) bool {
+		if node, ok := untypedNode.(*Node); ok {
+			ns.scanPorts(node)
+		}
+
+		return true
+	})
+}
+
+func (ns *NetScanner) fullNetworkPings(localIP net.IP, networkIps []net.IP) {
+	var wg sync.WaitGroup
+
+	// Ping each IP in parallel
 	for _, ip := range networkIps {
-		log.Printf("Pinging %s\n", ip.String())
+		wg.Add(1)
+		go func(ip net.IP) {
+			defer wg.Done()
+			ns.pingIp(localIP, ip)
+		}(ip)
+	}
 
-		pingResult, err := ResolvePing(ip.String())
+	// Wait for all pings to complete
+	wg.Wait()
+}
 
-		if err != nil {
+func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
+	log.Printf("Pinging %s\n", ip.String())
 
-			if node, ok := ns.NodeStatuses[ip.String()]; ok {
-				delete(ns.NodeStatuses, ip.String())
+	pingResult, err := ResolvePing(ip.String())
 
-				ns.NotifyChannel <- NetworkChange{
-					ChangeType:  NetworkChangeTypeNodeDeleted,
-					Description: fmt.Sprintf("Node %s deleted", ip.String()),
-					UpdatedNode: nil,
-					DeletedNode: node,
-				}
-			}
+	if err != nil {
 
-			continue
-		}
-
-		var currrentNode *Node = nil
-
-		// Update the node status
-		if node, ok := ns.NodeStatuses[ip.String()]; ok {
-			node.LastPingDuration = pingResult.Duration
-			currrentNode = node
-			ns.NodeStatuses[ip.String()] = node
+		if node, ok := ns.NodeStatuses.Load(ip.String()); ok {
+			ns.NodeStatuses.Delete(ip.String())
 
 			ns.NotifyChannel <- NetworkChange{
-				ChangeType:  NetworkChangeTypeNodeUpdated,
-				Description: fmt.Sprintf("Node %s updated", ip.String()),
-				UpdatedNode: node,
-				DeletedNode: nil,
-			}
-		} else {
-			node = &Node{
-				IP:               ip.String(),
-				LastPingDuration: pingResult.Duration,
-				Ports:            []Port{},
-			}
-
-			ns.NodeStatuses[ip.String()] = node
-			currrentNode = node
-
-			ns.NotifyChannel <- NetworkChange{
-				ChangeType:  NetworkChangeTypeNodeUpdated,
-				Description: fmt.Sprintf("New node found: %s", ip.String()),
-				UpdatedNode: node,
-				DeletedNode: nil,
+				ChangeType:  NetworkChangeTypeNodeDeleted,
+				Description: fmt.Sprintf("Node %s deleted", ip.String()),
+				UpdatedNode: nil,
+				DeletedNode: node.(*Node),
 			}
 		}
 
-		if localIP.Equal(ip) {
-			ns.ScannerNode = currrentNode
+		return
+	}
+
+	var currrentNode *Node = nil
+
+	// Update the node status
+	if untypedNode, ok := ns.NodeStatuses.Load(ip.String()); ok {
+		node := untypedNode.(*Node)
+		node.LastPingDuration = pingResult.Duration
+		currrentNode = node
+		ns.NodeStatuses.Store(ip.String(), node)
+
+		ns.NotifyChannel <- NetworkChange{
+			ChangeType:  NetworkChangeTypeNodeUpdated,
+			Description: fmt.Sprintf("Node %s updated", ip.String()),
+			UpdatedNode: node,
+			DeletedNode: nil,
+		}
+	} else {
+		node := &Node{
+			IP:               ip.String(),
+			LastPingDuration: pingResult.Duration,
+			Ports:            []Port{},
+		}
+
+		ns.NodeStatuses.Store(ip.String(), node)
+		currrentNode = node
+
+		ns.NotifyChannel <- NetworkChange{
+			ChangeType:  NetworkChangeTypeNodeUpdated,
+			Description: fmt.Sprintf("New node found: %s", ip.String()),
+			UpdatedNode: node,
+			DeletedNode: nil,
 		}
 	}
 
-	for _, node := range ns.NodeStatuses {
-		ns.scanPorts(node)
+	if localIP.Equal(ip) {
+		ns.ScannerNode = currrentNode
 	}
 }
 

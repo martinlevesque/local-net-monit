@@ -264,7 +264,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{{range $ip, $node := .NetScanner.NodeStatuses }}
+				{{range $ip, $node := .NodeStatuses }}
 				<tr>
 					<td>{{ $ip }}</td>
 					<td>{{ $node.LastPingDuration }}</td>

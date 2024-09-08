@@ -89,11 +89,21 @@ func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 			scannerNodeIP = netScanner.ScannerNode.IP
 		}
 
+		nodeStatuses := make(map[string]*networking.Node)
+
+		// todo make a function
+		netScanner.NodeStatuses.Range(func(key, value interface{}) bool {
+			nodeStatuses[key.(string)] = value.(*networking.Node)
+			return true
+		})
+
 		data := struct {
 			NetScanner    *networking.NetScanner
+			NodeStatuses  map[string]*networking.Node
 			ScannerNodeIP string
 		}{
 			NetScanner:    netScanner,
+			NodeStatuses:  nodeStatuses,
 			ScannerNodeIP: scannerNodeIP,
 		}
 
