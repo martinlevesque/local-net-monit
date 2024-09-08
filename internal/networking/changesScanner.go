@@ -38,10 +38,11 @@ type Node struct {
 }
 
 type NetScanner struct {
-	NotifyChannel chan NetworkChange
-	NodeStatuses  map[string]*Node
-	PublicNode    *Node
-	ScannerNode   *Node
+	NotifyChannel   chan NetworkChange
+	NodeStatuses    map[string]*Node
+	PublicNode      *Node
+	ScannerNode     *Node
+	BroadcastChange func(string)
 }
 
 func (ns *NetScanner) Scan() {
@@ -203,11 +204,11 @@ func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 	}
 
 	for _, node := range ns.NodeStatuses {
-		scanPorts(node)
+		ns.scanPorts(node)
 	}
 }
 
-func scanPorts(node *Node) {
+func (ns *NetScanner) scanPorts(node *Node) {
 	for port := 1; port <= 65535; port++ {
 		if isTCPPortOpen(node.IP, port) {
 			// todo notify changes
@@ -218,12 +219,25 @@ func scanPorts(node *Node) {
 					node.Ports,
 					Port{PortNumber: port, Verified: false, Notes: ""},
 				)
+				ns.NotifyChannel <- NetworkChange{
+					ChangeType:  NetworkChangePortUpdated,
+					Description: fmt.Sprintf("Node %s updated, port %d added", node.IP, port),
+					UpdatedNode: node,
+					DeletedNode: nil,
+				}
 			}
 		} else {
 			if portExistsInList(port, node.Ports) {
 				node.Ports = slices.DeleteFunc(node.Ports, func(p Port) bool {
 					return p.PortNumber == port
 				})
+
+				ns.NotifyChannel <- NetworkChange{
+					ChangeType:  NetworkChangePortUpdated,
+					Description: fmt.Sprintf("Node %s updated, port %d removed", node.IP, port),
+					UpdatedNode: node,
+					DeletedNode: nil,
+				}
 			}
 		}
 	}

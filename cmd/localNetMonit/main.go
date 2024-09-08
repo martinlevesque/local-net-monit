@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"github.com/martinlevesque/local-net-monit/internal/web"
 	"log"
@@ -24,10 +25,9 @@ func main() {
 		select {
 		case change := <-networkChannelReader:
 			log.Println(change.Description)
-
-			if change.UpdatedNode != nil {
-				log.Printf("-- Updated node: %s\n", change.UpdatedNode.IP)
-			}
+			log.Printf("-- Updated node: %v\n", change)
+			stringifiedChange := fmt.Sprintf("%v", change)
+			networkScanner.BroadcastChange(stringifiedChange)
 		}
 	}
 }
