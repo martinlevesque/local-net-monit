@@ -259,7 +259,7 @@
 			<thead>
 				<tr>
 					<th>IP Address</th>
-					<th>Latency (ms)</th>
+					<th>Latency</th>
 					<th>Ports</th>
 				</tr>
 			</thead>
@@ -296,6 +296,8 @@
 			<h2 id="modal-title"></h2>
 			<form id="port-form">
 				<input type="hidden" id="port-ip" name="port-ip" />
+				<input type="hidden" id="port-port-number" name="port-port-number" />
+
 				<div class="modal-checkbox-container">
 					<label for="port-verified">Verified:</label>
 					<input type="checkbox" id="port-verified" name="port-verified" />
@@ -306,7 +308,7 @@
 					<textarea id="port-notes" name="port-notes" rows="4" cols="50"></textarea>
 				</div>
 
-				<button type="submit" onclick="savePortDetails()">Save</button>
+				<button type="submit">Save</button>
 			</form>
 		</div>
 	</div>
@@ -318,8 +320,9 @@
 		function openModal(info) {
 			document.getElementById('modal-title').textContent = `${info.ip}:${info.portNumber} details`;
 			document.getElementById('port-verified').checked = info.verified;
-			document.getElementById('port-notes').textContent = info.notes;
+			document.getElementById('port-notes').value = info.notes;
 			document.getElementById('port-ip').value = info.ip;
+			document.getElementById('port-port-number').value = info.portNumber;
 			document.getElementById('portModal').style.display = 'block';
 		}
 
@@ -336,23 +339,42 @@
 			return document.getElementById('portModal').style.display === 'block';
 		}
 
-		function savePortDetails() {
-			const notes = document.getElementById('port-notes').value;
-			const verified = document.getElementById('port-verified').checked;
-
-			console.log('Notes:', notes);
-			console.log('Verified:', verified);
-
-			closeModal();
-		}
-
 		// Handle form submission
 		document.getElementById('port-form').onsubmit = function(e) {
 			e.preventDefault();
 			const verified = document.getElementById('port-verified').checked;
 			const notes = document.getElementById('port-notes').value;
-			// You can add functionality to save the form data here
-			closeModal();
+			const ip = document.getElementById('port-ip').value;
+			const portNumber = parseInt(document.getElementById('port-port-number').value);
+
+			fetch('/verify', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					ip: ip,
+					port: portNumber,
+					verified: verified,
+					notes: notes
+				})
+			})
+			.then(response => {
+				if (response.ok) {
+					return response.json();
+				} else {
+					throw new Error('Network response was not ok');
+				}
+			})
+			.then(data => {
+					location.reload();
+			})
+			.catch(error => {
+				console.error('Error:', error);
+			})
+			.finally(() => {
+				closeModal();
+			});
 		};
 
 		// Websocket connection

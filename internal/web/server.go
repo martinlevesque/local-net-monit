@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/martinlevesque/local-net-monit/internal/networking"
@@ -69,6 +70,55 @@ func handleWebSocket(conn *websocket.Conn) {
 	}
 }
 
+type VerifyRequest struct {
+	IP       string `json:"ip"`
+	Port     int    `json:"port"`
+	Verified bool   `json:"verified"`
+	Notes    string `json:"notes"`
+}
+
+func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var verifyReq VerifyRequest
+	if err := json.NewDecoder(r.Body).Decode(&verifyReq); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		log.Printf("Error decoding JSON: %v", err)
+		return
+	}
+
+	// Process the data as needed
+	log.Printf("Received verification request: IP=%s, Port=%d, Verified=%t, Notes=%s",
+		verifyReq.IP, verifyReq.Port, verifyReq.Verified, verifyReq.Notes)
+
+	portUpdated := false
+
+	// Update the node status
+	if node, ok := netScanner.NodeStatuses.Load(verifyReq.IP); ok {
+		node := node.(*networking.Node)
+
+		for i, port := range node.Ports {
+			if port.PortNumber == verifyReq.Port {
+				node.Ports[i].Verified = verifyReq.Verified
+				node.Ports[i].Notes = verifyReq.Notes
+
+				portUpdated = true
+			}
+		}
+	}
+
+	if portUpdated {
+		// Send a response back to the client
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"success"}`))
+	} else {
+		http.Error(w, "IP:Port not found", http.StatusNotFound)
+	}
+}
+
 func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 	port := 8080
 	serverAddress := fmt.Sprintf(":%d", port)
@@ -123,6 +173,11 @@ func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 			return
 		}
 		handleWebSocket(conn)
+	})
+
+	// Verify POST handler
+	mux.HandleFunc("POST /verify", func(w http.ResponseWriter, r *http.Request) {
+		handleVerify(netScanner, w, r)
 	})
 
 	server := &http.Server{
