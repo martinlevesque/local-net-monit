@@ -149,14 +149,21 @@ func (ns *NetScanner) currentNetworkIps() []net.IP {
 
 func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 	ns.fullNetworkPings(localIP, networkIps)
+	var wg sync.WaitGroup
 
 	ns.NodeStatuses.Range(func(_, untypedNode any) bool {
+		wg.Add(1)
 		if node, ok := untypedNode.(*Node); ok {
-			ns.scanPorts(node)
+			go func(node *Node) {
+				defer wg.Done()
+				ns.scanPorts(node)
+			}(node)
 		}
 
 		return true
 	})
+
+	wg.Wait()
 }
 
 func (ns *NetScanner) fullNetworkPings(localIP net.IP, networkIps []net.IP) {
