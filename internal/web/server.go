@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -119,6 +120,114 @@ func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *h
 	}
 }
 
+func handleRoot(netScanner *networking.NetScanner, templates map[string]*template.Template, w http.ResponseWriter, _ *http.Request) {
+	log.Println("GET /")
+	tmpl := templates["index.html"]
+
+	scannerNodeIP := ""
+
+	if netScanner.ScannerNode != nil {
+		scannerNodeIP = netScanner.ScannerNode.IP
+	}
+
+	nodeStatuses := make(map[string]*networking.Node)
+
+	// todo make a function
+	netScanner.NodeStatuses.Range(func(key, value interface{}) bool {
+		nodeStatuses[key.(string)] = value.(*networking.Node)
+		return true
+	})
+
+	data := struct {
+		NetScanner    *networking.NetScanner
+		NodeStatuses  map[string]*networking.Node
+		ScannerNodeIP string
+	}{
+		NetScanner:    netScanner,
+		NodeStatuses:  nodeStatuses,
+		ScannerNodeIP: scannerNodeIP,
+	}
+
+	err := tmpl.Execute(w, data)
+
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		log.Printf("template execution error: %v", err)
+	}
+}
+
+type HostPortStatus struct {
+	IP       string `json:"ip"`
+	Port     int    `json:"port"`
+	Verified bool   `json:"verified"`
+}
+
+func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *http.Request) {
+	envVarStatusPublicPorts := os.Getenv("STATUS_PUBLIC_PORTS")
+	envVarStatusLocalPorts := os.Getenv("STATUS_LOCAL_PORTS")
+
+	if envVarStatusPublicPorts == "" {
+		envVarStatusPublicPorts = "true"
+	}
+
+	if envVarStatusLocalPorts == "" {
+		envVarStatusLocalPorts = "false"
+	}
+
+	statuses := make([]HostPortStatus, 0)
+	hasUnverifiedPorts := false
+
+	if envVarStatusPublicPorts == "true" {
+		for _, port := range netScanner.PublicNode.Ports {
+			statuses = append(statuses, HostPortStatus{
+				IP:       netScanner.PublicNode.IP,
+				Port:     port.PortNumber,
+				Verified: port.Verified,
+			})
+
+			if !port.Verified {
+				hasUnverifiedPorts = true
+			}
+		}
+	}
+
+	if envVarStatusLocalPorts == "true" {
+		netScanner.NodeStatuses.Range(func(key, value interface{}) bool {
+			node := value.(*networking.Node)
+
+			for _, port := range node.Ports {
+				statuses = append(statuses, HostPortStatus{
+					IP:       node.IP,
+					Port:     port.PortNumber,
+					Verified: port.Verified,
+				})
+
+				if !port.Verified {
+					hasUnverifiedPorts = true
+				}
+			}
+
+			return true
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if hasUnverifiedPorts {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	jsonResponse, err := json.Marshal(statuses)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(jsonResponse)
+}
+
 func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 	port := 8080
 	serverAddress := fmt.Sprintf(":%d", port)
@@ -130,39 +239,7 @@ func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 	netScanner.BroadcastChange = broadcastToWebSockets
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("GET /")
-		tmpl := templates["index.html"]
-
-		scannerNodeIP := ""
-
-		if netScanner.ScannerNode != nil {
-			scannerNodeIP = netScanner.ScannerNode.IP
-		}
-
-		nodeStatuses := make(map[string]*networking.Node)
-
-		// todo make a function
-		netScanner.NodeStatuses.Range(func(key, value interface{}) bool {
-			nodeStatuses[key.(string)] = value.(*networking.Node)
-			return true
-		})
-
-		data := struct {
-			NetScanner    *networking.NetScanner
-			NodeStatuses  map[string]*networking.Node
-			ScannerNodeIP string
-		}{
-			NetScanner:    netScanner,
-			NodeStatuses:  nodeStatuses,
-			ScannerNodeIP: scannerNodeIP,
-		}
-
-		err := tmpl.Execute(w, data)
-
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			log.Printf("template execution error: %v", err)
-		}
+		handleRoot(netScanner, templates, w, r)
 	})
 
 	// WebSocket handler
@@ -175,9 +252,12 @@ func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 		handleWebSocket(conn)
 	})
 
-	// Verify POST handler
 	mux.HandleFunc("POST /verify", func(w http.ResponseWriter, r *http.Request) {
 		handleVerify(netScanner, w, r)
+	})
+
+	mux.HandleFunc("GET /status", func(w http.ResponseWriter, r *http.Request) {
+		handleStatus(netScanner, w, r)
 	})
 
 	server := &http.Server{
