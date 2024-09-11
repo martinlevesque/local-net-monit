@@ -4,5 +4,7 @@
 
 # env variables
 
-- `STATUS_PUBLIC_PORTS` - 
-- `STATUS_LOCALE_PORTS` - 
+- `MONITOR_PUBLIC_PORTS` (true/false) - Default: true
+- `MONITOR_LOCAL_PORTS` (true/false) - Default: true
+- `STATUS_PUBLIC_PORTS` (true/false) - Default: true
+- `STATUS_LOCALE_PORTS` (true/false) - Default: false

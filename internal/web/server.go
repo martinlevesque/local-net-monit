@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/martinlevesque/local-net-monit/internal/env"
 	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -163,16 +163,8 @@ type HostPortStatus struct {
 }
 
 func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *http.Request) {
-	envVarStatusPublicPorts := os.Getenv("STATUS_PUBLIC_PORTS")
-	envVarStatusLocalPorts := os.Getenv("STATUS_LOCAL_PORTS")
-
-	if envVarStatusPublicPorts == "" {
-		envVarStatusPublicPorts = "true"
-	}
-
-	if envVarStatusLocalPorts == "" {
-		envVarStatusLocalPorts = "false"
-	}
+	envVarStatusPublicPorts := env.EnvVar("STATUS_PUBLIC_PORTS", "true")
+	envVarStatusLocalPorts := env.EnvVar("STATUS_LOCAL_PORTS", "false")
 
 	statuses := make([]HostPortStatus, 0)
 	hasUnverifiedPorts := false

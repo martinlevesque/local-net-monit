@@ -2,6 +2,7 @@ package networking
 
 import (
 	"fmt"
+	"github.com/martinlevesque/local-net-monit/internal/env"
 	"log"
 	"net"
 	"slices"
@@ -64,30 +65,39 @@ func (ns *NetScanner) Scan() {
 	}
 
 	for {
-		// ns.scanPublicNodePorts()
-
-		// Get the local IP address
-		localIP := LocalIPResolver()
-
-		ipNet, err := FindSubnetForIP(localIP)
-
-		if err != nil {
-			fmt.Println(err)
-			return
+		if env.EnvVar("MONITOR_PUBLIC_PORTS", "true") == "true" {
+			ns.scanPublicNodePorts()
 		}
 
-		networkIps := GetIPRange(ipNet)
-
-		if time.Since(lastFullScanLoop) > 5*time.Minute {
-			log.Println("Full scan loop")
-			ns.scanLoop(localIP, networkIps)
-			lastFullScanLoop = time.Now()
-		} else {
-			log.Println("Partial scan loop")
-			ns.scanLoop(localIP, ns.currentNetworkIps())
+		if env.EnvVar("MONITOR_LOCAL_PORTS", "true") == "true" {
+			log.Println("Scanning local node ports")
+			ns.scanLocalNodePorts(lastFullScanLoop)
 		}
 
 		time.Sleep(10 * time.Second)
+	}
+}
+
+func (ns *NetScanner) scanLocalNodePorts(lastFullScanLoop time.Time) {
+	// Get the local IP address
+	localIP := LocalIPResolver()
+
+	ipNet, err := FindSubnetForIP(localIP)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	networkIps := GetIPRange(ipNet)
+
+	if time.Since(lastFullScanLoop) > 5*time.Minute {
+		log.Println("Full scan loop")
+		ns.scanLoop(localIP, networkIps)
+		lastFullScanLoop = time.Now()
+	} else {
+		log.Println("Partial scan loop")
+		ns.scanLoop(localIP, ns.currentNetworkIps())
 	}
 }
 
