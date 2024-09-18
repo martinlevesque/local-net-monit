@@ -65,6 +65,8 @@ func (ns *NetScanner) Scan() {
 	}
 
 	for {
+		log.Println("Scanning loop started")
+
 		if env.EnvVar("MONITOR_PUBLIC_PORTS", "true") == "true" {
 			ns.scanPublicNodePorts()
 		}

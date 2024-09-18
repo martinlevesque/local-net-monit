@@ -1,6 +1,6 @@
 
 boot:
-	go run ./cmd/localNetMonit
+	MONITOR_PUBLIC_PORTS=false go run ./cmd/localNetMonit
 
 port-check-server:
 	go run ./cmd/remotePortCheckServer
