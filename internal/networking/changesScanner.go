@@ -58,6 +58,8 @@ func (ns *NetScanner) Scan() {
 		log.Fatalf("Failed to get public IP: %v", err)
 	}
 
+	log.Printf("Public IP: %s\n", publicIP)
+
 	ns.PublicNode = &Node{
 		IP:               publicIP,
 		Ports:            []Port{},
@@ -119,6 +121,7 @@ func (ns *NetScanner) scanPublicNodePorts() {
 	}
 
 	for port := 1; port <= 65535; port++ {
+		log.Printf("Checking public port %d on %s\n", port, ns.PublicNode.IP)
 		resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, port)
 
 		if resultPublicOpen {

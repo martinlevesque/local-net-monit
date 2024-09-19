@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for local-net-monit on 2024-09-17T21:06:45-04:00
+# fly.toml app configuration file generated for remote-port-checker-server on 2024-09-18T20:13:49-04:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'local-net-monit'
+app = 'remote-port-checker-server'
 primary_region = 'yyz'
 
 [build]

@@ -7,8 +7,10 @@ import (
 	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
 )
 
+// pass a list of ports
 func IsPublicPortOpen(host string, port int) bool {
-	remote_port_checker_base_url := "http://localhost:8081"
+	// todo env var
+	remote_port_checker_base_url := "https://remote-port-checker-server.fly.dev"
 
 	body := make(map[string]interface{})
 
