@@ -241,13 +241,10 @@
 	
 	<div class="port-boxes">
 		{{range $port := .NetScanner.PublicNode.Ports }}
-			<div class="port-box" onclick="openModal({ ip: '{{ .NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
+			<div class="port-box" onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
 				Port {{ $port.PortNumber }}
 			</div>
 		{{end}}
-			<div class="port-box" onclick="openModal({ ip: '10.0.0.1', portNumber: 1234, verified: false, notes: 'hello!' })">
-				Port 10100
-			</div>
 	</div>
 
 	<div class="horizontal-line"></div>

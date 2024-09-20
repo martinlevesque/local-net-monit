@@ -40,17 +40,19 @@ type Node struct {
 }
 
 type NetScanner struct {
-	NotifyChannel   chan NetworkChange
-	NodeStatuses    sync.Map
-	PublicNode      *Node
-	ScannerNode     *Node
-	BroadcastChange func(string)
+	NotifyChannel         chan NetworkChange
+	NodeStatuses          sync.Map
+	PublicNode            *Node
+	ScannerNode           *Node
+	BroadcastChange       func(string)
+	LastLocalFullScanLoop time.Time
+	LastPublicScanLoop    time.Time
 }
 
 func (ns *NetScanner) Scan() {
 	ns.NodeStatuses = sync.Map{}
-	lastFullScanLoop := time.Now()
-	lastFullScanLoop = lastFullScanLoop.Add(-5 * time.Minute)
+	ns.LastLocalFullScanLoop = time.Now().Add(-6 * time.Minute) // todo should be based on env var
+	ns.LastPublicScanLoop = time.Now().Add(-6 * time.Minute)
 
 	publicIP, err := ResolverPublicIp()
 
@@ -75,14 +77,14 @@ func (ns *NetScanner) Scan() {
 
 		if env.EnvVar("MONITOR_LOCAL_PORTS", "true") == "true" {
 			log.Println("Scanning local node ports")
-			ns.scanLocalNodePorts(lastFullScanLoop)
+			ns.scanLocalNodePorts()
 		}
 
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func (ns *NetScanner) scanLocalNodePorts(lastFullScanLoop time.Time) {
+func (ns *NetScanner) scanLocalNodePorts() {
 	// Get the local IP address
 	localIP := LocalIPResolver()
 
@@ -95,10 +97,10 @@ func (ns *NetScanner) scanLocalNodePorts(lastFullScanLoop time.Time) {
 
 	networkIps := GetIPRange(ipNet)
 
-	if time.Since(lastFullScanLoop) > 5*time.Minute {
+	if time.Since(ns.LastLocalFullScanLoop) > 5*time.Minute {
 		log.Println("Full scan loop")
 		ns.scanLoop(localIP, networkIps)
-		lastFullScanLoop = time.Now()
+		ns.LastLocalFullScanLoop = time.Now()
 	} else {
 		log.Println("Partial scan loop")
 		ns.scanLoop(localIP, ns.currentNetworkIps())
@@ -120,10 +122,63 @@ func (ns *NetScanner) scanPublicNodePorts() {
 		ns.PublicNode.IP = newPublicIP
 	}
 
-	for port := 1; port <= 65535; port++ {
-		log.Printf("Checking public port %d on %s\n", port, ns.PublicNode.IP)
-		resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, port)
+	// list of ports to check
+	portsToCheck := []int{}
+	portsCheckBatch := []int{}
+	NB_PORTS_TO_CHECK_PER_BATCH := 50
 
+	if time.Since(ns.LastPublicScanLoop) > 5*time.Minute {
+		for port := 1; port <= 65535; port++ {
+			portsToCheck = append(portsToCheck, port)
+		}
+	} else {
+		// only check the ports that are already known
+		for _, port := range ns.PublicNode.Ports {
+			portsToCheck = append(portsToCheck, port.PortNumber)
+		}
+	}
+
+	for _, port := range portsToCheck {
+
+		portsCheckBatch = append(portsCheckBatch, port)
+
+		if len(portsCheckBatch) >= NB_PORTS_TO_CHECK_PER_BATCH {
+			ns.checkPublicNodePorts(portsCheckBatch)
+			portsCheckBatch = []int{}
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	if len(portsCheckBatch) > 0 {
+		// there might some remaining ports to check
+		ns.checkPublicNodePorts(portsCheckBatch)
+	}
+}
+
+func (ns *NetScanner) checkPublicNodePorts(ports []int) {
+	// run the check in parallel
+
+	var wg sync.WaitGroup
+	resultMap := make(map[int]bool)
+	var mutex sync.Mutex
+
+	for _, port := range ports {
+		wg.Add(1)
+		go func(port int) {
+			defer wg.Done()
+			resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, port)
+
+			mutex.Lock()
+			resultMap[port] = resultPublicOpen
+			mutex.Unlock()
+
+		}(port)
+	}
+
+	wg.Wait()
+
+	for port, resultPublicOpen := range resultMap {
 		if resultPublicOpen {
 			log.Printf("Port tcp %d is open on %s\n", port, ns.PublicNode.IP)
 
@@ -140,8 +195,6 @@ func (ns *NetScanner) scanPublicNodePorts() {
 				})
 			}
 		}
-
-		time.Sleep(20 * time.Millisecond)
 	}
 }
 
