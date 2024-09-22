@@ -1,10 +1,12 @@
 package networking
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/martinlevesque/local-net-monit/internal/env"
 	"log"
 	"net"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -58,6 +60,43 @@ func (ns *NetScanner) CopyNodeStatuses() map[string]*Node {
 	})
 
 	return nodeStatuses
+}
+
+func (ns *NetScanner) Json() (string, error) {
+	data := map[string]interface{}{
+		"NodeStatuses":          ns.CopyNodeStatuses(),
+		"PublicNode":            ns.PublicNode,
+		"ScannerNode":           ns.ScannerNode,
+		"LastLocalFullScanLoop": ns.LastLocalFullScanLoop,
+		"LastPublicScanLoop":    ns.LastPublicScanLoop,
+	}
+
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonData), nil
+
+}
+
+func (ns *NetScanner) Snapshot() error {
+	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
+
+	content, err := ns.Json()
+
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(storagePath, []byte(content), 0644)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (node *Node) VerifyPort(port int, verified bool, notes string) bool {

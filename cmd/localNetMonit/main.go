@@ -28,6 +28,7 @@ func main() {
 			log.Printf("-- Updated node: %v\n", change)
 			stringifiedChange := fmt.Sprintf("%v", change)
 			networkScanner.BroadcastChange(stringifiedChange)
+			networkScanner.Snapshot()
 		}
 	}
 }

@@ -11,4 +11,5 @@
 - `STATUS_LOCALE_PORTS` (true/false) - Default: false
 - `PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 120. The interval in minutes to do a full check of the public ports
 - `LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 60. The interval in minutes to do a full check of the local ports
+- `SNAPSHOT_STORAGE_PATH` - Default: localPortsMonit.json
 
