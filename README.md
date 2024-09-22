@@ -12,6 +12,3 @@
 - `PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 120. The interval in minutes to do a full check of the public ports
 - `LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 60. The interval in minutes to do a full check of the local ports
 
-TODO: env variable 
-- PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES
-- LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES
