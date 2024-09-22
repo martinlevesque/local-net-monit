@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.Println("Starting Local Network Monitor")
 	networkChannelReader := make(chan networking.NetworkChange)
 
 	networkScanner := networking.NetScanner{
