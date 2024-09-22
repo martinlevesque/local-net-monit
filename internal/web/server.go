@@ -97,17 +97,23 @@ func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *h
 
 	portUpdated := false
 
-	// Update the node status
+	// Look for the local node statuses
 	if node, ok := netScanner.NodeStatuses.Load(verifyReq.IP); ok {
 		node := node.(*networking.Node)
 
-		for i, port := range node.Ports {
-			if port.PortNumber == verifyReq.Port {
-				node.Ports[i].Verified = verifyReq.Verified
-				node.Ports[i].Notes = verifyReq.Notes
+		hasUpdatedPort := node.VerifyPort(verifyReq.Port, verifyReq.Verified, verifyReq.Notes)
 
-				portUpdated = true
-			}
+		if hasUpdatedPort {
+			portUpdated = true
+		}
+	}
+
+	// Public node check
+	if netScanner.PublicNode.IP == verifyReq.IP {
+		hasUpdatedPort := netScanner.PublicNode.VerifyPort(verifyReq.Port, verifyReq.Verified, verifyReq.Notes)
+
+		if hasUpdatedPort {
+			portUpdated = true
 		}
 	}
 
@@ -130,13 +136,7 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 		scannerNodeIP = netScanner.ScannerNode.IP
 	}
 
-	nodeStatuses := make(map[string]*networking.Node)
-
-	// todo make a function
-	netScanner.NodeStatuses.Range(func(key, value interface{}) bool {
-		nodeStatuses[key.(string)] = value.(*networking.Node)
-		return true
-	})
+	nodeStatuses := netScanner.CopyNodeStatuses()
 
 	data := struct {
 		NetScanner    *networking.NetScanner

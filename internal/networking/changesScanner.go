@@ -49,10 +49,44 @@ type NetScanner struct {
 	LastPublicScanLoop    time.Time
 }
 
+func (ns *NetScanner) CopyNodeStatuses() map[string]*Node {
+	nodeStatuses := make(map[string]*Node)
+
+	ns.NodeStatuses.Range(func(key, value interface{}) bool {
+		nodeStatuses[key.(string)] = value.(*Node)
+		return true
+	})
+
+	return nodeStatuses
+}
+
+func (node *Node) VerifyPort(port int, verified bool, notes string) bool {
+	portUpdated := false
+
+	for i, currentPort := range node.Ports {
+		if currentPort.PortNumber == port {
+			node.Ports[i].Verified = verified
+			node.Ports[i].Notes = notes
+
+			portUpdated = true
+		}
+	}
+
+	return portUpdated
+}
+
+func LocalPortsFullCheckInterval() time.Duration {
+	return time.Duration(env.EnvVarInt("LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES", 120)) * time.Minute
+}
+
+func PublicPortsFullCheckInterval() time.Duration {
+	return time.Duration(env.EnvVarInt("PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES", 120)) * time.Minute
+}
+
 func (ns *NetScanner) Scan() {
 	ns.NodeStatuses = sync.Map{}
-	ns.LastLocalFullScanLoop = time.Now().Add(-6 * time.Minute) // todo should be based on env var
-	ns.LastPublicScanLoop = time.Now().Add(-6 * time.Minute)
+	ns.LastLocalFullScanLoop = time.Now().Add(-LocalPortsFullCheckInterval())
+	ns.LastPublicScanLoop = time.Now().Add(-PublicPortsFullCheckInterval())
 
 	publicIP, err := ResolverPublicIp()
 
@@ -97,7 +131,7 @@ func (ns *NetScanner) scanLocalNodePorts() {
 
 	networkIps := GetIPRange(ipNet)
 
-	if time.Since(ns.LastLocalFullScanLoop) > 5*time.Minute {
+	if time.Since(ns.LastLocalFullScanLoop) > LocalPortsFullCheckInterval() {
 		log.Println("Full scan loop")
 		ns.scanLoop(localIP, networkIps)
 		ns.LastLocalFullScanLoop = time.Now()
@@ -187,12 +221,26 @@ func (ns *NetScanner) checkPublicNodePorts(ports []int) {
 					ns.PublicNode.Ports,
 					Port{PortNumber: port, Verified: false},
 				)
+
+				ns.NotifyChannel <- NetworkChange{
+					ChangeType:  NetworkChangeTypeNodeUpdated,
+					Description: fmt.Sprintf("Node %s detect port %d open", ns.PublicNode.IP, port),
+					UpdatedNode: ns.PublicNode,
+					DeletedNode: nil,
+				}
 			}
 		} else {
 			if portExistsInList(port, ns.PublicNode.Ports) {
 				ns.PublicNode.Ports = slices.DeleteFunc(ns.PublicNode.Ports, func(p Port) bool {
 					return p.PortNumber == port
 				})
+
+				ns.NotifyChannel <- NetworkChange{
+					ChangeType:  NetworkChangeTypeNodeUpdated,
+					Description: fmt.Sprintf("Node %s detect port %d closed", ns.PublicNode.IP, port),
+					UpdatedNode: ns.PublicNode,
+					DeletedNode: nil,
+				}
 			}
 		}
 	}
@@ -312,7 +360,6 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 func (ns *NetScanner) scanPorts(node *Node) {
 	for port := 1; port <= 65535; port++ {
 		if isTCPPortOpen(node.IP, port) {
-			// todo notify changes
 			log.Printf("Port tcp %d is open on %s\n", port, node.IP)
 
 			if !portExistsInList(port, node.Ports) {

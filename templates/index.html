@@ -241,9 +241,15 @@
 	
 	<div class="port-boxes">
 		{{range $port := .NetScanner.PublicNode.Ports }}
-			<div class="port-box" onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
-				Port {{ $port.PortNumber }}
-			</div>
+			{{if $port.Verified}}
+				<div class="port-box" onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
+					Port {{ $port.PortNumber }}
+				</div>
+			{{else}}
+				<div class="port-box port-box-warning" onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
+					Port {{ $port.PortNumber }}
+				</div>
+			{{end}}
 		{{end}}
 	</div>
 

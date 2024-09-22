@@ -2,6 +2,7 @@ package env
 
 import (
 	"os"
+	"strconv"
 )
 
 func EnvVar(key string, defaultValue string) string {
@@ -12,4 +13,20 @@ func EnvVar(key string, defaultValue string) string {
 	}
 
 	return value
+}
+
+func EnvVarInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+
+	if value == "" {
+		return defaultValue
+	}
+
+	intVar, err := strconv.Atoi(value)
+
+	if err != nil {
+		return defaultValue
+	}
+
+	return intVar
 }

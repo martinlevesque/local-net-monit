@@ -4,11 +4,14 @@
 
 # env variables
 
+- `REMOTE_PORT_CHECKER_BASE_URL` - Base url of the remote port checker service, the server located under cmd/remotePortCheckServer
 - `MONITOR_PUBLIC_PORTS` (true/false) - Default: true
 - `MONITOR_LOCAL_PORTS` (true/false) - Default: true
 - `STATUS_PUBLIC_PORTS` (true/false) - Default: true
 - `STATUS_LOCALE_PORTS` (true/false) - Default: false
+- `PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 120. The interval in minutes to do a full check of the public ports
+- `LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 60. The interval in minutes to do a full check of the local ports
 
 TODO: env variable 
-- PUBLIC_PORTS_FULL_CHECK_INTERVAL
-- LOCAL_PORTS_FULL_CHECK_INTERVAL
+- PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES
+- LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES

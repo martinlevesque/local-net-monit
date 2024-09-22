@@ -4,13 +4,13 @@ package networking
 
 import (
 	"encoding/json"
+	"github.com/martinlevesque/local-net-monit/internal/env"
 	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
 )
 
 // pass a list of ports
 func IsPublicPortOpen(host string, port int) bool {
-	// todo env var
-	remote_port_checker_base_url := "https://remote-port-checker-server.fly.dev"
+	remote_port_checker_base_url := env.EnvVar("REMOTE_PORT_CHECKER_BASE_URL", "https://remote-port-checker-server.fly.dev")
 
 	body := make(map[string]interface{})
 
