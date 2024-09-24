@@ -99,6 +99,55 @@ func (ns *NetScanner) Snapshot() error {
 	return nil
 }
 
+func (ns *NetScanner) Load() error {
+	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
+
+	// TODO
+
+	content, err := os.ReadFile(storagePath)
+
+	if err != nil {
+		return err
+	}
+
+	var data map[string]interface{}
+
+	err = json.Unmarshal(content, &data)
+
+	if err != nil {
+		return err
+	}
+
+	if nodeStatuses, ok := data["NodeStatuses"].(map[string]interface{}); ok {
+		for key, value := range nodeStatuses {
+			nodeData := value.(map[string]interface{})
+			portsData := nodeData["Ports"].([]interface{})
+			ports := make([]Port, len(portsData))
+
+			for i, portData := range portsData {
+				port := portData.(map[string]interface{})
+				ports[i] = Port{
+					PortNumber: int(port["PortNumber"].(float64)),
+					Verified:   port["Verified"].(bool),
+					Notes:      port["Notes"].(string),
+				}
+
+			}
+
+			node := &Node{
+				IP:               key,
+				LastPingDuration: time.Duration(nodeData["LastPingDuration"].(float64)),
+				Ports:            ports,
+			}
+
+			ns.NodeStatuses.Store(key, node)
+
+		}
+	}
+
+	return nil
+}
+
 func (node *Node) VerifyPort(port int, verified bool, notes string) bool {
 	portUpdated := false
 

@@ -28,7 +28,12 @@ func main() {
 			log.Printf("-- Updated node: %v\n", change)
 			stringifiedChange := fmt.Sprintf("%v", change)
 			networkScanner.BroadcastChange(stringifiedChange)
-			networkScanner.Snapshot()
+
+			err := networkScanner.Snapshot()
+
+			if err != nil {
+				log.Printf("Error while taking snapshot: %v\n", err)
+			}
 		}
 	}
 }
