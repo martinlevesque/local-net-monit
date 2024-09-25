@@ -99,7 +99,7 @@ func (ns *NetScanner) Snapshot() error {
 	return nil
 }
 
-func (ns *NetScanner) Load() error {
+func (ns *NetScanner) LoadSnapshot() error {
 	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
 
 	// TODO
@@ -121,31 +121,62 @@ func (ns *NetScanner) Load() error {
 	if nodeStatuses, ok := data["NodeStatuses"].(map[string]interface{}); ok {
 		for key, value := range nodeStatuses {
 			nodeData := value.(map[string]interface{})
-			portsData := nodeData["Ports"].([]interface{})
-			ports := make([]Port, len(portsData))
 
-			for i, portData := range portsData {
-				port := portData.(map[string]interface{})
-				ports[i] = Port{
-					PortNumber: int(port["PortNumber"].(float64)),
-					Verified:   port["Verified"].(bool),
-					Notes:      port["Notes"].(string),
-				}
-
-			}
-
-			node := &Node{
-				IP:               key,
-				LastPingDuration: time.Duration(nodeData["LastPingDuration"].(float64)),
-				Ports:            ports,
-			}
+			node := loadNode(nodeData)
 
 			ns.NodeStatuses.Store(key, node)
 
 		}
 	}
 
+	if publicNodeData, ok := data["PublicNode"].(map[string]interface{}); ok {
+		ns.PublicNode = loadNode(publicNodeData)
+	}
+
+	if lastLocalFullScanLoop, ok := data["LastLocalFullScanLoop"].(string); ok {
+		lastLocalFullScanLoopTime, err := time.Parse(time.RFC3339, lastLocalFullScanLoop)
+
+		if err != nil {
+			return err
+		}
+
+		ns.LastLocalFullScanLoop = lastLocalFullScanLoopTime
+	}
+
+	if lastPublicScanLoop, ok := data["LastPublicScanLoop"].(string); ok {
+		lastPublicScanLoopTime, err := time.Parse(time.RFC3339, lastPublicScanLoop)
+
+		if err != nil {
+			return err
+		}
+
+		ns.LastPublicScanLoop = lastPublicScanLoopTime
+	}
+
 	return nil
+}
+
+func loadNode(data map[string]interface{}) *Node {
+	portsData := data["Ports"].([]interface{})
+	ports := make([]Port, len(portsData))
+
+	for i, portData := range portsData {
+		port := portData.(map[string]interface{})
+		ports[i] = Port{
+			PortNumber: int(port["PortNumber"].(float64)),
+			Verified:   port["Verified"].(bool),
+			Notes:      port["Notes"].(string),
+		}
+
+	}
+
+	node := &Node{
+		IP:               data["IP"].(string),
+		LastPingDuration: time.Duration(data["LastPingDuration"].(float64)),
+		Ports:            ports,
+	}
+
+	return node
 }
 
 func (node *Node) VerifyPort(port int, verified bool, notes string) bool {

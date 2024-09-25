@@ -15,6 +15,8 @@ func main() {
 		ScannerNode:   nil,
 	}
 
+	networkScanner.LoadSnapshot()
+
 	go web.BootstrapHttpServer(&networkScanner)
 
 	go networkScanner.Scan()
