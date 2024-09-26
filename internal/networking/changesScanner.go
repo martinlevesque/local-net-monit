@@ -102,8 +102,6 @@ func (ns *NetScanner) Snapshot() error {
 func (ns *NetScanner) LoadSnapshot() error {
 	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
 
-	// TODO
-
 	content, err := os.ReadFile(storagePath)
 
 	if err != nil {
@@ -125,7 +123,6 @@ func (ns *NetScanner) LoadSnapshot() error {
 			node := loadNode(nodeData)
 
 			ns.NodeStatuses.Store(key, node)
-
 		}
 	}
 
@@ -203,10 +200,6 @@ func PublicPortsFullCheckInterval() time.Duration {
 }
 
 func (ns *NetScanner) Scan() {
-	ns.NodeStatuses = sync.Map{}
-	ns.LastLocalFullScanLoop = time.Now().Add(-LocalPortsFullCheckInterval())
-	ns.LastPublicScanLoop = time.Now().Add(-PublicPortsFullCheckInterval())
-
 	publicIP, err := ResolverPublicIp()
 
 	if err != nil {

@@ -5,17 +5,26 @@ import (
 	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"github.com/martinlevesque/local-net-monit/internal/web"
 	"log"
+	"sync"
+	"time"
 )
 
 func main() {
 	networkChannelReader := make(chan networking.NetworkChange)
 
 	networkScanner := networking.NetScanner{
-		NotifyChannel: networkChannelReader,
-		ScannerNode:   nil,
+		NotifyChannel:         networkChannelReader,
+		ScannerNode:           nil,
+		NodeStatuses:          sync.Map{},
+		LastLocalFullScanLoop: time.Now().Add(-networking.LocalPortsFullCheckInterval()),
+		LastPublicScanLoop:    time.Now().Add(-networking.PublicPortsFullCheckInterval()),
 	}
 
-	networkScanner.LoadSnapshot()
+	err := networkScanner.LoadSnapshot()
+
+	if err != nil {
+		log.Printf("No snapshot available: %v\n", err)
+	}
 
 	go web.BootstrapHttpServer(&networkScanner)
 
