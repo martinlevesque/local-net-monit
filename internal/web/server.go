@@ -103,6 +103,13 @@ func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *h
 
 		hasUpdatedPort := node.VerifyPort(verifyReq.Port, verifyReq.Verified, verifyReq.Notes)
 
+		netScanner.NotifyChannel <- networking.NetworkChange{
+			ChangeType:  networking.NetworkChangePortUpdated,
+			Description: fmt.Sprintf("Node %s detect port %d open", verifyReq.IP, verifyReq.Port),
+			UpdatedNode: node,
+			DeletedNode: nil,
+		}
+
 		if hasUpdatedPort {
 			portUpdated = true
 		}

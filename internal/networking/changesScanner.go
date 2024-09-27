@@ -1,10 +1,12 @@
 package networking
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/martinlevesque/local-net-monit/internal/env"
 	"log"
 	"net"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -60,6 +62,120 @@ func (ns *NetScanner) CopyNodeStatuses() map[string]*Node {
 	return nodeStatuses
 }
 
+func (ns *NetScanner) Json() (string, error) {
+	data := map[string]interface{}{
+		"NodeStatuses":          ns.CopyNodeStatuses(),
+		"PublicNode":            ns.PublicNode,
+		"ScannerNode":           ns.ScannerNode,
+		"LastLocalFullScanLoop": ns.LastLocalFullScanLoop,
+		"LastPublicScanLoop":    ns.LastPublicScanLoop,
+	}
+
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonData), nil
+
+}
+
+func (ns *NetScanner) Snapshot() error {
+	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
+
+	content, err := ns.Json()
+
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(storagePath, []byte(content), 0644)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ns *NetScanner) LoadSnapshot() error {
+	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
+
+	content, err := os.ReadFile(storagePath)
+
+	if err != nil {
+		return err
+	}
+
+	var data map[string]interface{}
+
+	err = json.Unmarshal(content, &data)
+
+	if err != nil {
+		return err
+	}
+
+	if nodeStatuses, ok := data["NodeStatuses"].(map[string]interface{}); ok {
+		for key, value := range nodeStatuses {
+			nodeData := value.(map[string]interface{})
+
+			node := loadNode(nodeData)
+
+			ns.NodeStatuses.Store(key, node)
+		}
+	}
+
+	if publicNodeData, ok := data["PublicNode"].(map[string]interface{}); ok {
+		ns.PublicNode = loadNode(publicNodeData)
+	}
+
+	if lastLocalFullScanLoop, ok := data["LastLocalFullScanLoop"].(string); ok {
+		lastLocalFullScanLoopTime, err := time.Parse(time.RFC3339, lastLocalFullScanLoop)
+
+		if err != nil {
+			return err
+		}
+
+		ns.LastLocalFullScanLoop = lastLocalFullScanLoopTime
+	}
+
+	if lastPublicScanLoop, ok := data["LastPublicScanLoop"].(string); ok {
+		lastPublicScanLoopTime, err := time.Parse(time.RFC3339, lastPublicScanLoop)
+
+		if err != nil {
+			return err
+		}
+
+		ns.LastPublicScanLoop = lastPublicScanLoopTime
+	}
+
+	return nil
+}
+
+func loadNode(data map[string]interface{}) *Node {
+	portsData := data["Ports"].([]interface{})
+	ports := make([]Port, len(portsData))
+
+	for i, portData := range portsData {
+		port := portData.(map[string]interface{})
+		ports[i] = Port{
+			PortNumber: int(port["PortNumber"].(float64)),
+			Verified:   port["Verified"].(bool),
+			Notes:      port["Notes"].(string),
+		}
+
+	}
+
+	node := &Node{
+		IP:               data["IP"].(string),
+		LastPingDuration: time.Duration(data["LastPingDuration"].(float64)),
+		Ports:            ports,
+	}
+
+	return node
+}
+
 func (node *Node) VerifyPort(port int, verified bool, notes string) bool {
 	portUpdated := false
 
@@ -84,10 +200,6 @@ func PublicPortsFullCheckInterval() time.Duration {
 }
 
 func (ns *NetScanner) Scan() {
-	ns.NodeStatuses = sync.Map{}
-	ns.LastLocalFullScanLoop = time.Now().Add(-LocalPortsFullCheckInterval())
-	ns.LastPublicScanLoop = time.Now().Add(-PublicPortsFullCheckInterval())
-
 	publicIP, err := ResolverPublicIp()
 
 	if err != nil {
