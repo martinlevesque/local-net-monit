@@ -6,21 +6,31 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	LIMIT_PER_SECOND = 100
+	LIMIT_PER_SECOND             = 100
+	LIMIT_QUERY_HOSTS_PER_MINUTE = 1
 )
 
 var (
-	rateLimiters = make(map[string]*RateLimiter)
-	mu           sync.Mutex
+	rateLimiters     = make(map[string]*RateLimiter)
+	hostRateLimiters = make(map[string]*HostRateLimiter)
+	mu               sync.Mutex
+	hostMu           sync.Mutex
 )
 
 type RateLimiter struct {
 	requests    int
+	lastRequest time.Time
+}
+
+type HostRateLimiter struct {
+	hosts []string
+
 	lastRequest time.Time
 }
 
@@ -31,15 +41,47 @@ func NewRateLimiter() *RateLimiter {
 	}
 }
 
-func (rl *RateLimiter) Allow() bool {
+func NewHostRateLimiter() *HostRateLimiter {
+	return &HostRateLimiter{
+		hosts:       make([]string, 0),
+		lastRequest: time.Now(),
+	}
+}
+
+func (rl *RateLimiter) Allow(limit int, interval time.Duration) bool {
 	now := time.Now()
-	if now.Sub(rl.lastRequest) > time.Second {
+
+	if now.Sub(rl.lastRequest) > interval {
 		rl.requests = 0
 		rl.lastRequest = now
 	}
 
 	rl.requests++
-	return rl.requests <= LIMIT_PER_SECOND
+	return rl.requests <= limit
+}
+
+func (hrl *HostRateLimiter) Allow(host string, interval time.Duration) bool {
+	now := time.Now()
+
+	if now.Sub(hrl.lastRequest) > interval {
+		hrl.hosts = make([]string, 0)
+		hrl.lastRequest = now
+	}
+
+	// Check if the host is already in the list in one line
+	hostExists := false
+
+	for _, h := range hrl.hosts {
+		if h == host {
+			hostExists = true
+		}
+	}
+
+	if !hostExists {
+		hrl.hosts = append(hrl.hosts, host)
+	}
+
+	return len(hrl.hosts) <= LIMIT_QUERY_HOSTS_PER_MINUTE
 }
 
 func rateLimitMiddleware(next http.Handler) http.Handler {
@@ -58,13 +100,27 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 		}
 		mu.Unlock()
 
-		if !limiter.Allow() {
+		if !limiter.Allow(LIMIT_PER_SECOND, time.Second) {
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func hostRateLimit(fromIp string, host string) bool {
+	hostMu.Lock()
+	defer hostMu.Unlock()
+
+	limiter, exists := hostRateLimiters[fromIp]
+
+	if !exists {
+		limiter = NewHostRateLimiter()
+		hostRateLimiters[fromIp] = limiter
+	}
+
+	return limiter.Allow(host, time.Minute)
 }
 
 func main() {
@@ -112,6 +168,23 @@ func main() {
 
 		log.Println("POST /query", request)
 
+		// Apply host rate limiter
+		fromIp, _, err := net.SplitHostPort(r.RemoteAddr)
+
+		if err != nil {
+			http.Error(w, "Unable to determine IP address", http.StatusInternalServerError)
+			return
+		}
+
+		cleanedHost := ""
+
+		cleanedHost = strings.TrimSpace(strings.ToLower(request.Host))
+
+		if !hostRateLimit(fromIp, cleanedHost) {
+			http.Error(w, "Rate limit for this host exceeded", http.StatusTooManyRequests)
+			return
+		}
+
 		// Check if the host is reachable
 		timeout := 1000 * time.Millisecond
 		_, err = net.DialTimeout("tcp", fmt.Sprintf("%s:%d", request.Host, request.Port), timeout)
@@ -137,5 +210,5 @@ func main() {
 
 	log.Println("Starting server at", serverAddress)
 	server.ListenAndServe()
-
 }
+
