@@ -34,12 +34,15 @@
 
 		.port-boxes {
 		    position: absolute;
-		    top: calc(33% - 80px); /* Adjust the vertical position above the line */
+		    top: calc(130px); /* Adjust the vertical position above the line */
 		    left: 50%;
 		    transform: translateX(-50%);
 		    display: flex;
-		    gap: 20px; /* Space between boxes */
+		    gap: 20px;
+		    
 		}
+
+
 
 		/* Styling for Ethernet-like port box */
 		.port-box {
@@ -57,6 +60,7 @@
 		    text-align: center;
 		    cursor: pointer; /* Make it clickable */
 		}
+*/
 
 		/* Simulating port "keyhole" slots at the bottom */
 		.port-box::before {
@@ -241,15 +245,10 @@
 	
 	<div class="port-boxes">
 		{{range $port := .NetScanner.PublicNode.Ports }}
-			{{if $port.Verified}}
-				<div class="port-box" onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
-					Port {{ $port.PortNumber }}
-				</div>
-			{{else}}
-				<div class="port-box port-box-warning" onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
-					Port {{ $port.PortNumber }}
-				</div>
-			{{end}}
+			<div title='{{$port.Notes}}' class="port-box {{if not $port.Verified}}port-box-warning{{end}}" 
+			     onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
+				Port {{ $port.PortNumber }} {{if $port.Notes}}*{{end}}
+			</div>
 		{{end}}
 	</div>
 
@@ -274,15 +273,10 @@
 					<td class="ports-column">
 						<div class="port-container">
 							{{range $port := $node.Ports }}
-								{{if $port.Verified}}
-								<div class="port-box" onclick="openModal({ ip: '{{ $ip }}', portNumber: {{ $port.PortNumber }}, notes: '{{ $port.Notes }}', verified: {{ $port.Verified }}})">
-										{{ $port.PortNumber }}
-									</div>
-								{{else}}
-								<div class="port-box port-box-warning" onclick="openModal({ ip: '{{ $ip }}', portNumber: {{ $port.PortNumber }}, notes: '{{ $port.Notes }}', verified: {{ $port.Verified }}})">
-										{{ $port.PortNumber }}
-									</div>
-								{{end}}
+								<div title='{{$port.Notes}}' class="port-box {{ if not $port.Verified }}port-box-warning{{end}}"
+									onclick="openModal({ ip: '{{ $ip }}', portNumber: {{ $port.PortNumber }}, notes: '{{ $port.Notes }}', verified: {{ $port.Verified }}})">
+									{{ $port.PortNumber }} {{if $port.Notes}}*{{end}}
+								</div>
 							{{end}}
 						</div>
 					</td>

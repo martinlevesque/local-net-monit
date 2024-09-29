@@ -271,7 +271,7 @@ func (ns *NetScanner) scanPublicNodePorts() {
 	// list of ports to check
 	portsToCheck := []int{}
 	portsCheckBatch := []int{}
-	NB_PORTS_TO_CHECK_PER_BATCH := 50
+	NB_PORTS_TO_CHECK_PER_BATCH := env.EnvVarInt("NB_PUBLIC_PORTS_TO_CHECK_PER_BATCH", 20)
 
 	if time.Since(ns.LastPublicScanLoop) > 5*time.Minute {
 		for port := 1; port <= 65535; port++ {
