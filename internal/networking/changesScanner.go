@@ -200,22 +200,26 @@ func PublicPortsFullCheckInterval() time.Duration {
 }
 
 func (ns *NetScanner) Scan() {
-	publicIP, err := ResolverPublicIp()
-
-	if err != nil {
-		log.Fatalf("Failed to get public IP: %v", err)
-	}
-
-	log.Printf("Public IP: %s\n", publicIP)
-
-	ns.PublicNode = &Node{
-		IP:               publicIP,
-		Ports:            []Port{},
-		LastPingDuration: time.Duration(0),
-	}
-
 	for {
 		log.Println("Scanning loop started")
+
+		publicIP, err := ResolverPublicIp()
+
+		if err != nil {
+			log.Fatalf("Failed to get public IP: %v", err)
+		}
+
+		log.Printf("Public IP: %s\n", publicIP)
+
+		if ns.PublicNode == nil || ns.PublicNode.IP != publicIP {
+			log.Printf("Public IP changed to %s\n", publicIP)
+
+			ns.PublicNode = &Node{
+				IP:               publicIP,
+				Ports:            []Port{},
+				LastPingDuration: time.Duration(0),
+			}
+		}
 
 		if env.EnvVar("MONITOR_PUBLIC_PORTS", "true") == "true" {
 			ns.scanPublicNodePorts()
@@ -313,7 +317,12 @@ func (ns *NetScanner) checkPublicNodePorts(ports []int) {
 		wg.Add(1)
 		go func(port int) {
 			defer wg.Done()
-			resultPublicOpen := IsPublicPortOpen(ns.PublicNode.IP, port)
+			resultPublicOpen, err := IsPublicPortOpen(ns.PublicNode.IP, port)
+
+			if err != nil {
+				log.Printf("Failed to check port %d: %v\n", port, err)
+				return
+			}
 
 			mutex.Lock()
 			resultMap[port] = resultPublicOpen

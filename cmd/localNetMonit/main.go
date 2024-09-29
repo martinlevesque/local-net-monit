@@ -15,6 +15,7 @@ func main() {
 	networkScanner := networking.NetScanner{
 		NotifyChannel:         networkChannelReader,
 		ScannerNode:           nil,
+		PublicNode:            nil,
 		NodeStatuses:          sync.Map{},
 		LastLocalFullScanLoop: time.Now().Add(-networking.LocalPortsFullCheckInterval()),
 		LastPublicScanLoop:    time.Now().Add(-networking.PublicPortsFullCheckInterval()),

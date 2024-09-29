@@ -189,17 +189,19 @@ func main() {
 		timeout := 1000 * time.Millisecond
 		_, err = net.DialTimeout("tcp", fmt.Sprintf("%s:%d", request.Host, request.Port), timeout)
 
-		if err != nil {
-			http.Error(w, "Host is not reachable", http.StatusServiceUnavailable)
-			return
-		}
+		w.Header().Set("Content-Type", "application/json")
 
 		response := Response{
-			Status: "reachable",
+			Status: "unreachable",
+		}
+
+		if err != nil {
+			response = Response{
+				Status: "unreachable",
+			}
 		}
 
 		// Marshal the struct to JSON
-		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(response)
 	})
 
@@ -211,4 +213,3 @@ func main() {
 	log.Println("Starting server at", serverAddress)
 	server.ListenAndServe()
 }
-

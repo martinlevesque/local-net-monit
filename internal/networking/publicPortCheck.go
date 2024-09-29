@@ -4,12 +4,13 @@ package networking
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/martinlevesque/local-net-monit/internal/env"
 	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
 )
 
 // pass a list of ports
-func IsPublicPortOpen(host string, port int) bool {
+func IsPublicPortOpen(host string, port int) (bool, error) {
 	remote_port_checker_base_url := env.EnvVar("REMOTE_PORT_CHECKER_BASE_URL", "https://remote-port-checker-server.fly.dev")
 
 	body := make(map[string]interface{})
@@ -20,11 +21,11 @@ func IsPublicPortOpen(host string, port int) bool {
 	status, response, err := httpTooling.Post(remote_port_checker_base_url, "/query", body)
 
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	if status != "200 OK" {
-		return false
+		return false, fmt.Errorf("Unexpected status code: %s", status)
 	}
 
 	responseResult := make(map[string]interface{})
@@ -32,8 +33,8 @@ func IsPublicPortOpen(host string, port int) bool {
 	json.Unmarshal([]byte(response), &responseResult)
 
 	if checkResult, ok := responseResult["status"]; ok {
-		return checkResult == "reachable"
+		return checkResult == "reachable", nil
 	}
 
-	return false
+	return false, fmt.Errorf("status field missing in the response")
 }
