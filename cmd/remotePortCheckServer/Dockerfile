@@ -22,9 +22,6 @@ FROM gcr.io/distroless/static
 # Copy the Go binary from the build stage
 COPY --from=build /remote-port-check-server /remote-port-check-server
 
-# Expose the port the app will run on
-EXPOSE 8081
-
 # Command to run the binary
 CMD ["/remote-port-check-server"]
 
