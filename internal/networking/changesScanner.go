@@ -82,7 +82,7 @@ func (ns *NetScanner) Json() (string, error) {
 }
 
 func (ns *NetScanner) Snapshot() error {
-	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
+	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localNetMonit.json")
 
 	content, err := ns.Json()
 
@@ -100,7 +100,7 @@ func (ns *NetScanner) Snapshot() error {
 }
 
 func (ns *NetScanner) LoadSnapshot() error {
-	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localPortsScanner.json")
+	storagePath := env.EnvVar("SNAPSHOT_STORAGE_PATH", "localNetMonit.json")
 
 	content, err := os.ReadFile(storagePath)
 
