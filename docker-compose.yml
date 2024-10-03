@@ -1,6 +1,7 @@
 
 services:
   local-net-monit:
+    restart: always
     build:
       context: ./
       dockerfile: ./cmd/localNetMonit/Dockerfile
@@ -23,6 +24,7 @@ services:
       - app-network
 
   remote-port-check-server:
+    restart: always
     build:
       context: .
       dockerfile: ./cmd/remotePortCheckServer/Dockerfile
