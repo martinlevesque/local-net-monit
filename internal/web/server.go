@@ -228,7 +228,7 @@ func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *h
 }
 
 func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
-	port := 8080
+	port := env.EnvVarInt("PORT", 8080)
 	serverAddress := fmt.Sprintf(":%d", port)
 
 	templates := PrepareTemplates()
