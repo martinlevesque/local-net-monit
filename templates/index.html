@@ -374,8 +374,21 @@
 			});
 		};
 
-		// Websocket connection
-		const socket = new WebSocket("ws://localhost:8080/ws");
+		function wsUrl() {
+			const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+			const hostname = window.location.hostname;
+
+			let port = window.location.port;
+
+			if (!port) {
+			  port = protocol === "wss" ? 443 : 80;
+			}
+			const wsUrl = `${protocol}://${hostname}:${port}/ws`;
+
+			return wsUrl;
+		}
+
+		const socket = new WebSocket(wsUrl());
 
 		socket.onopen = function () {
 			console.log('web sock connection opened')

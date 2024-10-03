@@ -45,7 +45,9 @@ func PrepareTemplates() map[string]*template.Template {
 	templates_list := []string{"index.html"}
 
 	for _, template_name := range templates_list {
-		templates[template_name] = template.Must(template.ParseFiles(filepath.Join(templates_dir, template_name)))
+		templates[template_name] = template.Must(
+			template.ParseFiles(filepath.Join(templates_dir, template_name)),
+		)
 	}
 
 	return templates
@@ -149,10 +151,12 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 		NetScanner    *networking.NetScanner
 		NodeStatuses  map[string]*networking.Node
 		ScannerNodeIP string
+		WebSocketUrl  string
 	}{
 		NetScanner:    netScanner,
 		NodeStatuses:  nodeStatuses,
 		ScannerNodeIP: scannerNodeIP,
+		WebSocketUrl:  env.EnvVar("WEB_SOCKET_URL", "ws://localhost:8080/ws"),
 	}
 
 	err := tmpl.Execute(w, data)
