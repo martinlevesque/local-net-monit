@@ -6,8 +6,6 @@ services:
     build:
       context: ./
       dockerfile: ./cmd/localNetMonit/Dockerfile
-    ports:
-      - "10001:10001"
     environment:
       - PORT=10001
       - REMOTE_PORT_CHECKER_BASE_URL=http://localhost:8081
@@ -23,12 +21,11 @@ services:
     #   - .env
 
   remote-port-check-server:
+    network_mode: host
     restart: always
     build:
       context: .
       dockerfile: ./cmd/remotePortCheckServer/Dockerfile
-    ports:
-      - "8081:8081"
     environment:
       - PORT=8081
 
