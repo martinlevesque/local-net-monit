@@ -2,14 +2,15 @@
 services:
   local-net-monit:
     restart: always
+    network_mode: host
     build:
       context: ./
       dockerfile: ./cmd/localNetMonit/Dockerfile
     ports:
-      - "8080:8080"
+      - "10001:10001"
     environment:
-      - PORT=8080
-      - REMOTE_PORT_CHECKER_BASE_URL=http://remote-port-check-server:8081
+      - PORT=10001
+      - REMOTE_PORT_CHECKER_BASE_URL=http://localhost:8081
       - MONITOR_PUBLIC_PORTS=true
       - MONITOR_LOCAL_PORTS=true
       - STATUS_PUBLIC_PORTS=true
@@ -20,8 +21,6 @@ services:
       - SNAPSHOT_STORAGE_PATH=localNetMonit.json
     # env_file:
     #   - .env
-    networks:
-      - app-network
 
   remote-port-check-server:
     restart: always
@@ -32,9 +31,4 @@ services:
       - "8081:8081"
     environment:
       - PORT=8081
-    networks:
-      - app-network
 
-networks:
-  app-network:
-    driver: bridge
