@@ -1,5 +1,8 @@
 # local-net-monit
 
+## Features
+
+- Monitor local ports
 
 ## Installation
 
