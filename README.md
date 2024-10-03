@@ -11,7 +11,6 @@ todo
 ## Environment variables (localNetMonit service)
 
 - `REMOTE_PORT_CHECKER_BASE_URL` - Base url of the remote port checker service, the server located under cmd/remotePortCheckServer. 
-- `WEB_SOCKET_URL` - The websocket server url to receive updates.
 - `MONITOR_PUBLIC_PORTS` (true/false) - Default: true. When enabled, the service will monitor the public ports by calling `REMOTE_PORT_CHECKER_BASE_URL`.
 - `MONITOR_LOCAL_PORTS` (true/false) - Default: true. When enabled, the service will monitor the local ports.
 - `STATUS_PUBLIC_PORTS` (true/false) - Default: true. When enabled, the status endpoint /status will return non 200 if at least one public port is not yet verified.

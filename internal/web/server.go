@@ -156,7 +156,6 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 		NetScanner:    netScanner,
 		NodeStatuses:  nodeStatuses,
 		ScannerNodeIP: scannerNodeIP,
-		WebSocketUrl:  env.EnvVar("WEB_SOCKET_URL", "ws://localhost:8080/ws"),
 	}
 
 	err := tmpl.Execute(w, data)
