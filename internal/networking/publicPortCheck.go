@@ -9,7 +9,6 @@ import (
 	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
 )
 
-// pass a list of ports
 func IsPublicPortOpen(host string, port int) (bool, error) {
 	remote_port_checker_base_url := env.EnvVar("REMOTE_PORT_CHECKER_BASE_URL", "https://remote-port-checker-server.fly.dev")
 

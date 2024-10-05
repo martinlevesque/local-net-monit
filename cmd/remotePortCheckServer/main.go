@@ -192,10 +192,12 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 
 		response := Response{
-			Status: "unreachable",
+			Status: "reachable",
 		}
 
 		if err != nil {
+			log.Println("Error:", err)
+
 			response = Response{
 				Status: "unreachable",
 			}
