@@ -8,8 +8,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/scan ./cmd/localNetMonit
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/localNetMonit ./cmd/localNetMonit
 
 # Command to run the binary
-CMD ["/app/scan"]
+CMD ["/app/localNetMonit"]
 

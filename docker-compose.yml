@@ -8,17 +8,8 @@ services:
       dockerfile: ./cmd/localNetMonit/Dockerfile
     environment:
       - PORT=10001
-      - REMOTE_PORT_CHECKER_BASE_URL=http://localhost:8081
-      - MONITOR_PUBLIC_PORTS=true
-      - MONITOR_LOCAL_PORTS=true
-      - STATUS_PUBLIC_PORTS=true
-      - STATUS_LOCAL_PORTS=false
-      - PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES=120
-      - LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES=60
-      - NB_PUBLIC_PORTS_TO_CHECK_PER_BATCH=20
-      - SNAPSHOT_STORAGE_PATH=localNetMonit.json
-    #env_file:
-    #  - .env
+    env_file:
+      - .env
     volumes:
       - ./localNetMonit.json:/app/localNetMonit.json
       
