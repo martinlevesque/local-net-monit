@@ -17,8 +17,11 @@ services:
       - LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES=60
       - NB_PUBLIC_PORTS_TO_CHECK_PER_BATCH=20
       - SNAPSHOT_STORAGE_PATH=localNetMonit.json
-    # env_file:
-    #   - .env
+    #env_file:
+    #  - .env
+    volumes:
+      - ./localNetMonit.json:/app/localNetMonit.json
+      
 
   remote-port-check-server:
     network_mode: host

@@ -230,6 +230,7 @@ func (ns *NetScanner) Scan() {
 			ns.scanLocalNodePorts()
 		}
 
+		log.Println("Scanning loop ended")
 		time.Sleep(10 * time.Second)
 	}
 }
