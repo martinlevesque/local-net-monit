@@ -13,12 +13,14 @@ func main() {
 	networkChannelReader := make(chan networking.NetworkChange)
 
 	networkScanner := networking.NetScanner{
-		NotifyChannel:         networkChannelReader,
-		ScannerNode:           nil,
-		PublicNode:            nil,
-		NodeStatuses:          sync.Map{},
-		LastLocalFullScanLoop: time.Now().Add(-networking.LocalPortsFullCheckInterval()),
-		LastPublicScanLoop:    time.Now().Add(-networking.PublicPortsFullCheckInterval()),
+		NotifyChannel:          networkChannelReader,
+		ScannerNode:            nil,
+		PublicNode:             nil,
+		NodeStatuses:           sync.Map{},
+		LastLocalFullScanLoop:  time.Now().Add(-networking.LocalPortsFullCheckInterval()),
+		LastLocalScanLoop:      time.Now(),
+		LastPublicFullScanLoop: time.Now().Add(-networking.PublicPortsFullCheckInterval()),
+		LastPublicScanLoop:     time.Now(),
 	}
 
 	err := networkScanner.LoadSnapshot()

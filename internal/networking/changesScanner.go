@@ -15,10 +15,14 @@ import (
 type NetworkChangeType string
 
 const (
-	NetworkChangeTypeNodeUpdated   NetworkChangeType = "NodeUpdated"
-	NetworkChangeTypeNodeDeleted   NetworkChangeType = "NodeDeleted"
-	NetworkChangePortUpdated       NetworkChangeType = "PortUpdated"
-	NetworkChangePublicNodeUpdated NetworkChangeType = "PublicNodeUpdated"
+	NetworkChangeTypeNodeUpdated                NetworkChangeType = "NodeUpdated"
+	NetworkChangeTypeNodeDeleted                NetworkChangeType = "NodeDeleted"
+	NetworkChangePortUpdated                    NetworkChangeType = "PortUpdated"
+	NetworkChangePublicNodeUpdated              NetworkChangeType = "PublicNodeUpdated"
+	NetworkChangeTypeFullLocalScanCompleted     NetworkChangeType = "FullLocalScanCompleted"
+	NetworkChangeTypePartialLocalScanCompleted  NetworkChangeType = "PartialLocalScanCompleted"
+	NetworkChangeTypeFullPublicScanCompleted    NetworkChangeType = "FullPublicScanCompleted"
+	NetworkChangeTypePartialPublicScanCompleted NetworkChangeType = "PartialPublicScanCompleted"
 )
 
 type NetworkChange struct {
@@ -42,13 +46,15 @@ type Node struct {
 }
 
 type NetScanner struct {
-	NotifyChannel         chan NetworkChange
-	NodeStatuses          sync.Map
-	PublicNode            *Node
-	ScannerNode           *Node
-	BroadcastChange       func(string)
-	LastLocalFullScanLoop time.Time
-	LastPublicScanLoop    time.Time
+	NotifyChannel          chan NetworkChange
+	NodeStatuses           sync.Map
+	PublicNode             *Node
+	ScannerNode            *Node
+	BroadcastChange        func(string)
+	LastLocalFullScanLoop  time.Time
+	LastLocalScanLoop      time.Time
+	LastPublicFullScanLoop time.Time
+	LastPublicScanLoop     time.Time
 }
 
 func (ns *NetScanner) CopyNodeStatuses() map[string]*Node {
@@ -64,11 +70,13 @@ func (ns *NetScanner) CopyNodeStatuses() map[string]*Node {
 
 func (ns *NetScanner) Json() (string, error) {
 	data := map[string]interface{}{
-		"NodeStatuses":          ns.CopyNodeStatuses(),
-		"PublicNode":            ns.PublicNode,
-		"ScannerNode":           ns.ScannerNode,
-		"LastLocalFullScanLoop": ns.LastLocalFullScanLoop,
-		"LastPublicScanLoop":    ns.LastPublicScanLoop,
+		"NodeStatuses":           ns.CopyNodeStatuses(),
+		"PublicNode":             ns.PublicNode,
+		"ScannerNode":            ns.ScannerNode,
+		"LastLocalFullScanLoop":  ns.LastLocalFullScanLoop,
+		"LastLocalScanLoop":      ns.LastLocalScanLoop,
+		"LastPublicFullScanLoop": ns.LastPublicFullScanLoop,
+		"LastPublicScanLoop":     ns.LastPublicScanLoop,
 	}
 
 	jsonData, err := json.MarshalIndent(data, "", "  ")
@@ -130,27 +138,22 @@ func (ns *NetScanner) LoadSnapshot() error {
 		ns.PublicNode = loadNode(publicNodeData)
 	}
 
-	if lastLocalFullScanLoop, ok := data["LastLocalFullScanLoop"].(string); ok {
-		lastLocalFullScanLoopTime, err := time.Parse(time.RFC3339, lastLocalFullScanLoop)
-
-		if err != nil {
-			return err
-		}
-
-		ns.LastLocalFullScanLoop = lastLocalFullScanLoopTime
-	}
-
-	if lastPublicScanLoop, ok := data["LastPublicScanLoop"].(string); ok {
-		lastPublicScanLoopTime, err := time.Parse(time.RFC3339, lastPublicScanLoop)
-
-		if err != nil {
-			return err
-		}
-
-		ns.LastPublicScanLoop = lastPublicScanLoopTime
-	}
+	readTimeInto(data, "LastPublicFullScanLoop", &ns.LastPublicFullScanLoop)
+	readTimeInto(data, "LastPublicScanLoop", &ns.LastPublicScanLoop)
+	readTimeInto(data, "LastLocalFullScanLoop", &ns.LastLocalFullScanLoop)
+	readTimeInto(data, "LastLocalScanLoop", &ns.LastLocalScanLoop)
 
 	return nil
+}
+
+func readTimeInto(data map[string]interface{}, key string, target *time.Time) {
+	if value, ok := data[key].(string); ok {
+		timeValue, err := time.Parse(time.RFC3339, value)
+
+		if err == nil {
+			*target = timeValue
+		}
+	}
 }
 
 func loadNode(data map[string]interface{}) *Node {
@@ -248,13 +251,34 @@ func (ns *NetScanner) scanLocalNodePorts() {
 
 	networkIps := GetIPRange(ipNet)
 
+	var fullScan bool
+
 	if time.Since(ns.LastLocalFullScanLoop) > LocalPortsFullCheckInterval() {
 		log.Println("Full scan loop")
 		ns.scanLoop(localIP, networkIps)
-		ns.LastLocalFullScanLoop = time.Now()
+
+		fullScan = true
 	} else {
 		log.Println("Partial scan loop")
 		ns.scanLoop(localIP, ns.currentNetworkIps())
+
+		fullScan = false
+	}
+
+	if fullScan {
+		ns.LastLocalFullScanLoop = time.Now()
+
+		ns.NotifyChannel <- NetworkChange{
+			ChangeType:  NetworkChangeTypeFullLocalScanCompleted,
+			Description: fmt.Sprintf("Full local scan completed"),
+		}
+	} else {
+		ns.LastLocalScanLoop = time.Now()
+
+		ns.NotifyChannel <- NetworkChange{
+			ChangeType:  NetworkChangeTypePartialLocalScanCompleted,
+			Description: fmt.Sprintf("Partial local scan completed"),
+		}
 	}
 }
 
@@ -278,15 +302,21 @@ func (ns *NetScanner) scanPublicNodePorts() {
 	portsCheckBatch := []int{}
 	NB_PORTS_TO_CHECK_PER_BATCH := env.EnvVarInt("NB_PUBLIC_PORTS_TO_CHECK_PER_BATCH", 20)
 
+	var fullScan bool
+
 	if time.Since(ns.LastPublicScanLoop) > 5*time.Minute {
 		for port := 1; port <= 65535; port++ {
 			portsToCheck = append(portsToCheck, port)
 		}
+
+		fullScan = true
 	} else {
 		// only check the ports that are already known
 		for _, port := range ns.PublicNode.Ports {
 			portsToCheck = append(portsToCheck, port.PortNumber)
 		}
+
+		fullScan = false
 	}
 
 	for _, port := range portsToCheck {
@@ -304,6 +334,22 @@ func (ns *NetScanner) scanPublicNodePorts() {
 	if len(portsCheckBatch) > 0 {
 		// there might some remaining ports to check
 		ns.checkPublicNodePorts(portsCheckBatch)
+	}
+
+	if fullScan {
+		ns.LastPublicFullScanLoop = time.Now()
+
+		ns.NotifyChannel <- NetworkChange{
+			ChangeType:  NetworkChangeTypeFullPublicScanCompleted,
+			Description: fmt.Sprintf("Full public scan completed"),
+		}
+	} else {
+		ns.LastPublicScanLoop = time.Now()
+
+		ns.NotifyChannel <- NetworkChange{
+			ChangeType:  NetworkChangeTypePartialPublicScanCompleted,
+			Description: fmt.Sprintf("Partial public scan completed"),
+		}
 	}
 }
 

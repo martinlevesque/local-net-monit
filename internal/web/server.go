@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 )
 
 var wsConnections sync.Map
@@ -148,14 +149,22 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 	nodeStatuses := netScanner.CopyNodeStatuses()
 
 	data := struct {
-		NetScanner    *networking.NetScanner
-		NodeStatuses  map[string]*networking.Node
-		ScannerNodeIP string
-		WebSocketUrl  string
+		NetScanner             *networking.NetScanner
+		NodeStatuses           map[string]*networking.Node
+		LastPublicFullScanLoop string
+		LastPublicScanLoop     string
+		LastLocalFullScanLoop  string
+		LastLocalScanLoop      string
+		ScannerNodeIP          string
+		WebSocketUrl           string
 	}{
-		NetScanner:    netScanner,
-		NodeStatuses:  nodeStatuses,
-		ScannerNodeIP: scannerNodeIP,
+		NetScanner:             netScanner,
+		NodeStatuses:           nodeStatuses,
+		LastPublicFullScanLoop: netScanner.LastPublicFullScanLoop.Format(time.RFC850),
+		LastPublicScanLoop:     netScanner.LastPublicScanLoop.Format(time.RFC850),
+		LastLocalFullScanLoop:  netScanner.LastLocalFullScanLoop.Format(time.RFC850),
+		LastLocalScanLoop:      netScanner.LastLocalScanLoop.Format(time.RFC850),
+		ScannerNodeIP:          scannerNodeIP,
 	}
 
 	err := tmpl.Execute(w, data)
