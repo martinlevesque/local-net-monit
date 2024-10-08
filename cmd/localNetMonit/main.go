@@ -42,6 +42,10 @@ func main() {
 			log.Printf("-- Updated node: %v\n", change)
 			stringifiedChange := fmt.Sprintf("%v", change)
 			networkScanner.BroadcastChange(stringifiedChange)
+			networkScanner.AppendRecentChange(networking.RecentNetworkChange{
+				Description: change.Description,
+				Timestamp:   change.Timestamp.Format(time.RFC3339),
+			})
 
 			err := networkScanner.Snapshot()
 

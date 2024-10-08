@@ -23,14 +23,21 @@ const (
 	NetworkChangeTypePartialLocalScanCompleted  NetworkChangeType = "PartialLocalScanCompleted"
 	NetworkChangeTypeFullPublicScanCompleted    NetworkChangeType = "FullPublicScanCompleted"
 	NetworkChangeTypePartialPublicScanCompleted NetworkChangeType = "PartialPublicScanCompleted"
+	NetworkChangeTypeCheckPublicPortsInterval   NetworkChangeType = "CheckPublicPortsInterval"
 )
 
 type NetworkChange struct {
+	Timestamp   time.Time
 	ChangeType  NetworkChangeType
 	Description string
 	UpdatedNode *Node
 	DeletedNode *Node
 	PublicNode  *Node // the public/Internet IP node
+}
+
+type RecentNetworkChange struct {
+	Timestamp   string
+	Description string
 }
 
 type Port struct {
@@ -55,6 +62,21 @@ type NetScanner struct {
 	LastLocalScanLoop      time.Time
 	LastPublicFullScanLoop time.Time
 	LastPublicScanLoop     time.Time
+	RecentChanges          []RecentNetworkChange
+}
+
+func (ns *NetScanner) NotifyChange(change NetworkChange) {
+	change.Timestamp = time.Now()
+
+	ns.NotifyChannel <- change
+}
+
+func (ns *NetScanner) AppendRecentChange(change RecentNetworkChange) {
+	ns.RecentChanges = append(ns.RecentChanges, change)
+
+	if len(ns.RecentChanges) > 10 {
+		ns.RecentChanges = ns.RecentChanges[1:]
+	}
 }
 
 func (ns *NetScanner) CopyNodeStatuses() map[string]*Node {
@@ -73,6 +95,7 @@ func (ns *NetScanner) Json() (string, error) {
 		"NodeStatuses":           ns.CopyNodeStatuses(),
 		"PublicNode":             ns.PublicNode,
 		"ScannerNode":            ns.ScannerNode,
+		"RecentChanges":          ns.RecentChanges,
 		"LastLocalFullScanLoop":  ns.LastLocalFullScanLoop,
 		"LastLocalScanLoop":      ns.LastLocalScanLoop,
 		"LastPublicFullScanLoop": ns.LastPublicFullScanLoop,
@@ -142,6 +165,24 @@ func (ns *NetScanner) LoadSnapshot() error {
 	readTimeInto(data, "LastPublicScanLoop", &ns.LastPublicScanLoop)
 	readTimeInto(data, "LastLocalFullScanLoop", &ns.LastLocalFullScanLoop)
 	readTimeInto(data, "LastLocalScanLoop", &ns.LastLocalScanLoop)
+
+	// load recent RecentChanges
+
+	if recentChangesData, ok := data["RecentChanges"].([]interface{}); ok {
+		for _, changeData := range recentChangesData {
+			change := changeData.(map[string]interface{})
+			timestamp, err := time.Parse(time.RFC3339, change["Timestamp"].(string))
+
+			if err != nil {
+				continue
+			}
+
+			ns.RecentChanges = append(ns.RecentChanges, RecentNetworkChange{
+				Timestamp:   timestamp.Format(time.RFC3339),
+				Description: change["Description"].(string),
+			})
+		}
+	}
 
 	return nil
 }
@@ -229,7 +270,6 @@ func (ns *NetScanner) Scan() {
 		}
 
 		if env.EnvVar("MONITOR_LOCAL_PORTS", "true") == "true" {
-			log.Println("Scanning local node ports")
 			ns.scanLocalNodePorts()
 		}
 
@@ -268,17 +308,17 @@ func (ns *NetScanner) scanLocalNodePorts() {
 	if fullScan {
 		ns.LastLocalFullScanLoop = time.Now()
 
-		ns.NotifyChannel <- NetworkChange{
+		ns.NotifyChange(NetworkChange{
 			ChangeType:  NetworkChangeTypeFullLocalScanCompleted,
 			Description: fmt.Sprintf("Full local scan completed"),
-		}
+		})
 	} else {
 		ns.LastLocalScanLoop = time.Now()
 
-		ns.NotifyChannel <- NetworkChange{
+		ns.NotifyChange(NetworkChange{
 			ChangeType:  NetworkChangeTypePartialLocalScanCompleted,
 			Description: fmt.Sprintf("Partial local scan completed"),
-		}
+		})
 	}
 }
 
@@ -304,7 +344,7 @@ func (ns *NetScanner) scanPublicNodePorts() {
 
 	var fullScan bool
 
-	if time.Since(ns.LastPublicScanLoop) > 5*time.Minute {
+	if time.Since(ns.LastPublicFullScanLoop) > PublicPortsFullCheckInterval() {
 		for port := 1; port <= 65535; port++ {
 			portsToCheck = append(portsToCheck, port)
 		}
@@ -325,6 +365,15 @@ func (ns *NetScanner) scanPublicNodePorts() {
 
 		if len(portsCheckBatch) >= NB_PORTS_TO_CHECK_PER_BATCH {
 			ns.checkPublicNodePorts(portsCheckBatch)
+
+			ns.NotifyChange(NetworkChange{
+				ChangeType: NetworkChangeTypeCheckPublicPortsInterval,
+				Description: fmt.Sprintf("Checking public ports %d to %d",
+					portsCheckBatch[0],
+					portsCheckBatch[len(portsCheckBatch)-1],
+				),
+			})
+
 			portsCheckBatch = []int{}
 		}
 
@@ -339,17 +388,17 @@ func (ns *NetScanner) scanPublicNodePorts() {
 	if fullScan {
 		ns.LastPublicFullScanLoop = time.Now()
 
-		ns.NotifyChannel <- NetworkChange{
+		ns.NotifyChange(NetworkChange{
 			ChangeType:  NetworkChangeTypeFullPublicScanCompleted,
 			Description: fmt.Sprintf("Full public scan completed"),
-		}
+		})
 	} else {
 		ns.LastPublicScanLoop = time.Now()
 
-		ns.NotifyChannel <- NetworkChange{
+		ns.NotifyChange(NetworkChange{
 			ChangeType:  NetworkChangeTypePartialPublicScanCompleted,
 			Description: fmt.Sprintf("Partial public scan completed"),
-		}
+		})
 	}
 }
 
@@ -390,12 +439,12 @@ func (ns *NetScanner) checkPublicNodePorts(ports []int) {
 					Port{PortNumber: port, Verified: false},
 				)
 
-				ns.NotifyChannel <- NetworkChange{
+				ns.NotifyChange(NetworkChange{
 					ChangeType:  NetworkChangeTypeNodeUpdated,
 					Description: fmt.Sprintf("Node %s detect port %d open", ns.PublicNode.IP, port),
 					UpdatedNode: ns.PublicNode,
 					DeletedNode: nil,
-				}
+				})
 			}
 		} else {
 			if portExistsInList(port, ns.PublicNode.Ports) {
@@ -403,12 +452,12 @@ func (ns *NetScanner) checkPublicNodePorts(ports []int) {
 					return p.PortNumber == port
 				})
 
-				ns.NotifyChannel <- NetworkChange{
+				ns.NotifyChange(NetworkChange{
 					ChangeType:  NetworkChangeTypeNodeUpdated,
 					Description: fmt.Sprintf("Node %s detect port %d closed", ns.PublicNode.IP, port),
 					UpdatedNode: ns.PublicNode,
 					DeletedNode: nil,
-				}
+				})
 			}
 		}
 	}
@@ -476,12 +525,12 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 		if node, ok := ns.NodeStatuses.Load(ip.String()); ok {
 			ns.NodeStatuses.Delete(ip.String())
 
-			ns.NotifyChannel <- NetworkChange{
+			ns.NotifyChange(NetworkChange{
 				ChangeType:  NetworkChangeTypeNodeDeleted,
 				Description: fmt.Sprintf("Node %s deleted", ip.String()),
 				UpdatedNode: nil,
 				DeletedNode: node.(*Node),
-			}
+			})
 		}
 
 		return
@@ -496,12 +545,12 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 		currrentNode = node
 		ns.NodeStatuses.Store(ip.String(), node)
 
-		ns.NotifyChannel <- NetworkChange{
+		ns.NotifyChange(NetworkChange{
 			ChangeType:  NetworkChangeTypeNodeUpdated,
 			Description: fmt.Sprintf("Node %s updated", ip.String()),
 			UpdatedNode: node,
 			DeletedNode: nil,
-		}
+		})
 	} else {
 		node := &Node{
 			IP:               ip.String(),
@@ -512,12 +561,12 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 		ns.NodeStatuses.Store(ip.String(), node)
 		currrentNode = node
 
-		ns.NotifyChannel <- NetworkChange{
+		ns.NotifyChange(NetworkChange{
 			ChangeType:  NetworkChangeTypeNodeUpdated,
 			Description: fmt.Sprintf("New node found: %s", ip.String()),
 			UpdatedNode: node,
 			DeletedNode: nil,
-		}
+		})
 	}
 
 	if localIP.Equal(ip) {
@@ -535,12 +584,12 @@ func (ns *NetScanner) scanPorts(node *Node) {
 					node.Ports,
 					Port{PortNumber: port, Verified: false, Notes: ""},
 				)
-				ns.NotifyChannel <- NetworkChange{
+				ns.NotifyChange(NetworkChange{
 					ChangeType:  NetworkChangePortUpdated,
 					Description: fmt.Sprintf("Node %s updated, port %d added", node.IP, port),
 					UpdatedNode: node,
 					DeletedNode: nil,
-				}
+				})
 			}
 		} else {
 			if portExistsInList(port, node.Ports) {
@@ -548,12 +597,12 @@ func (ns *NetScanner) scanPorts(node *Node) {
 					return p.PortNumber == port
 				})
 
-				ns.NotifyChannel <- NetworkChange{
+				ns.NotifyChange(NetworkChange{
 					ChangeType:  NetworkChangePortUpdated,
 					Description: fmt.Sprintf("Node %s updated, port %d removed", node.IP, port),
 					UpdatedNode: node,
 					DeletedNode: nil,
-				}
+				})
 			}
 		}
 	}
