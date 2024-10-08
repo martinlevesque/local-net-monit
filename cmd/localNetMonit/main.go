@@ -13,12 +13,14 @@ func main() {
 	networkChannelReader := make(chan networking.NetworkChange)
 
 	networkScanner := networking.NetScanner{
-		NotifyChannel:         networkChannelReader,
-		ScannerNode:           nil,
-		PublicNode:            nil,
-		NodeStatuses:          sync.Map{},
-		LastLocalFullScanLoop: time.Now().Add(-networking.LocalPortsFullCheckInterval()),
-		LastPublicScanLoop:    time.Now().Add(-networking.PublicPortsFullCheckInterval()),
+		NotifyChannel:          networkChannelReader,
+		ScannerNode:            nil,
+		PublicNode:             nil,
+		NodeStatuses:           sync.Map{},
+		LastLocalFullScanLoop:  time.Now().Add(-networking.LocalPortsFullCheckInterval()),
+		LastLocalScanLoop:      time.Now(),
+		LastPublicFullScanLoop: time.Now().Add(-networking.PublicPortsFullCheckInterval()),
+		LastPublicScanLoop:     time.Now(),
 	}
 
 	err := networkScanner.LoadSnapshot()
@@ -40,6 +42,10 @@ func main() {
 			log.Printf("-- Updated node: %v\n", change)
 			stringifiedChange := fmt.Sprintf("%v", change)
 			networkScanner.BroadcastChange(stringifiedChange)
+			networkScanner.AppendRecentChange(networking.RecentNetworkChange{
+				Description: change.Description,
+				Timestamp:   change.Timestamp.Format(time.RFC3339),
+			})
 
 			err := networkScanner.Snapshot()
 

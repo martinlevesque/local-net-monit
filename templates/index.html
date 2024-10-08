@@ -236,10 +236,61 @@
 		button:hover {
 			background-color: #4cae4c;
 		}
+
+		.public-scans-timestamps {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			font-size: 12px;
+
+			p {
+				margin-top: 0px;
+				margin-bottom: 2px;
+			}
+		}
+
+		.recent-changes {
+			position: absolute;
+			top: 40px;
+			left: 10px;
+			font-size: 12px;
+		}
+
+		.local-scans-timestamps {
+			position: absolute;
+			top: calc(33% + 10px); /* Positioning below the line */
+			left: 10px;
+			font-size: 12px;
+
+			p {
+				margin-top: 0px;
+				margin-bottom: 2px;
+			}
+		}
 	</style>
 </head>
 <body>
 	<div class="title-top">Internet ({{ .NetScanner.PublicNode.IP }})</div>
+
+	<div class="public-scans-timestamps">
+		<p>Last Public Full Scan: <span class="timestamp-to-convert">{{ .LastPublicFullScanLoop }}</span></p>
+		<p>Last Public Partial Scan: <span class="timestamp-to-convert">{{ .LastPublicScanLoop }}</span></p>
+	</div>
+	
+	<div class="recent-changes">
+		<h3>Recent Changes:</h3>
+		<ul>
+			{{range $change := .RecentChanges}}
+				<li><span class="timestamp-to-convert">{{$change.Timestamp}}</span> - {{$change.Description}}</li>
+			{{end}}
+		</ul>
+	</div>
+
+	<div class="local-scans-timestamps">
+		<p>Last Local Full Scan: <span class="timestamp-to-convert">{{ .LastLocalFullScanLoop }}</span></p>
+		<p>Last Local Partial Scan: <span class="timestamp-to-convert">{{ .LastLocalScanLoop }}</span></p>
+	</div>
+
 	<div class="title-local-network">Local Network</div>
 	
 	<div class="port-boxes">
@@ -407,6 +458,19 @@
 		function send() {
 			socket.send(input.value);
 			input.value = "";
+		}
+
+		function datetimeStringToLocalDatetimeString(datetimeString) {
+			const date = new Date(datetimeString);
+			return date.toLocaleString();
+		}
+
+		// On load
+		const timestampElements = document.getElementsByClassName("timestamp-to-convert");
+
+		for (const element of timestampElements) {
+			const timestamp = element.textContent;
+			element.textContent = datetimeStringToLocalDatetimeString(timestamp);
 		}
 	</script>
 

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 )
 
 var wsConnections sync.Map
@@ -105,12 +106,12 @@ func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *h
 
 		hasUpdatedPort := node.VerifyPort(verifyReq.Port, verifyReq.Verified, verifyReq.Notes)
 
-		netScanner.NotifyChannel <- networking.NetworkChange{
+		netScanner.NotifyChange(networking.NetworkChange{
 			ChangeType:  networking.NetworkChangePortUpdated,
 			Description: fmt.Sprintf("Node %s detect port %d open", verifyReq.IP, verifyReq.Port),
 			UpdatedNode: node,
 			DeletedNode: nil,
-		}
+		})
 
 		if hasUpdatedPort {
 			portUpdated = true
@@ -148,14 +149,24 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 	nodeStatuses := netScanner.CopyNodeStatuses()
 
 	data := struct {
-		NetScanner    *networking.NetScanner
-		NodeStatuses  map[string]*networking.Node
-		ScannerNodeIP string
-		WebSocketUrl  string
+		NetScanner             *networking.NetScanner
+		NodeStatuses           map[string]*networking.Node
+		LastPublicFullScanLoop string
+		LastPublicScanLoop     string
+		LastLocalFullScanLoop  string
+		LastLocalScanLoop      string
+		ScannerNodeIP          string
+		WebSocketUrl           string
+		RecentChanges          []networking.RecentNetworkChange
 	}{
-		NetScanner:    netScanner,
-		NodeStatuses:  nodeStatuses,
-		ScannerNodeIP: scannerNodeIP,
+		NetScanner:             netScanner,
+		NodeStatuses:           nodeStatuses,
+		LastPublicFullScanLoop: netScanner.LastPublicFullScanLoop.Format(time.RFC3339),
+		LastPublicScanLoop:     netScanner.LastPublicScanLoop.Format(time.RFC3339),
+		LastLocalFullScanLoop:  netScanner.LastLocalFullScanLoop.Format(time.RFC3339),
+		LastLocalScanLoop:      netScanner.LastLocalScanLoop.Format(time.RFC3339),
+		ScannerNodeIP:          scannerNodeIP,
+		RecentChanges:          netScanner.RecentChanges,
 	}
 
 	err := tmpl.Execute(w, data)

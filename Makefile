@@ -1,8 +1,8 @@
 
-boot:
-	MONITOR_PUBLIC_PORTS=true go run ./cmd/localNetMonit
+boot-local-net-monit:
+	go run ./cmd/localNetMonit
 
-port-check-server:
+boot-port-check-server:
 	go run ./cmd/remotePortCheckServer
 
 test-dev:
