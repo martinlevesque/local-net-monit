@@ -362,8 +362,22 @@
 
 	<script>
 		let g_changesReceived = false;
+		let g_updateTimeout = null;
 
-		// Function to open modal with the port info
+		function wsUrl() {
+			const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+			const hostname = window.location.hostname;
+
+			let port = window.location.port;
+
+			if (!port) {
+			  port = protocol === "wss" ? 443 : 80;
+			}
+			const wsUrl = `${protocol}://${hostname}:${port}/ws`;
+
+			return wsUrl;
+		}
+
 		function openModal(info) {
 			document.getElementById('modal-title').textContent = `${info.ip}:${info.portNumber} details`;
 			document.getElementById('port-verified').checked = info.verified;
@@ -373,11 +387,14 @@
 			document.getElementById('portModal').style.display = 'block';
 		}
 
-		// Function to close modal
 		function closeModal() {
 			document.getElementById('portModal').style.display = 'none';
 
 			if (g_changesReceived) {
+				if (g_updateTimeout) {
+					clearTimeout(g_updateTimeout);
+				}
+
 				location.reload();
 			}
 		}
@@ -424,24 +441,11 @@
 			});
 		};
 
-		function wsUrl() {
-			const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-			const hostname = window.location.hostname;
-
-			let port = window.location.port;
-
-			if (!port) {
-			  port = protocol === "wss" ? 443 : 80;
-			}
-			const wsUrl = `${protocol}://${hostname}:${port}/ws`;
-
-			return wsUrl;
-		}
 
 		const socket = new WebSocket(wsUrl());
 
 		socket.onopen = function () {
-			console.log('web sock connection opened')
+			console.log('web sock connection opened');
 		};
 
 		socket.onmessage = function (e) {
@@ -450,10 +454,20 @@
 			if (modalOpened()) {
 				return;
 			} else {
-				g_changesReceived = false;
-				location.reload();
+				if (!g_updateTimeout) {
+					g_updateTimeout = setTimeout(refreshDashboard, 10 * 1000);
+				}
 			}
 		};
+
+		function refreshDashboard() {
+			if (!modalOpened()) {
+				g_changesReceived = false;
+				uptimeTimeout = null;
+
+				location.reload();
+			}
+		}
 
 		function send() {
 			socket.send(input.value);
