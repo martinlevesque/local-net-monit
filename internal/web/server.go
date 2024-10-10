@@ -8,8 +8,10 @@ import (
 	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sync"
 	"time"
@@ -81,6 +83,34 @@ type VerifyRequest struct {
 	Notes    string `json:"notes"`
 }
 
+func retrieveOriginIP(r *http.Request) string {
+	// Get the IP address of the client
+	originIP := r.Header.Get("X-Forwarded-For")
+
+	if originIP == "" {
+		originIP, _, _ = net.SplitHostPort(r.RemoteAddr)
+	}
+
+	return originIP
+}
+
+func originIpAllowed(originIp string) bool {
+	ipRegexPattern := env.EnvVar("WEB_ROOT_ALLOWED_ORIGIN_IP_PATTERN", "")
+
+	if ipRegexPattern == "" {
+		return true
+	}
+
+	ipRegex, err := regexp.Compile(ipRegexPattern)
+
+	if err != nil {
+		fmt.Println("Error compiling regex:", err)
+		return false
+	}
+
+	return ipRegex.MatchString(originIp)
+}
+
 func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -136,9 +166,16 @@ func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *h
 	}
 }
 
-func handleRoot(netScanner *networking.NetScanner, templates map[string]*template.Template, w http.ResponseWriter, _ *http.Request) {
+func handleRoot(netScanner *networking.NetScanner, templates map[string]*template.Template, w http.ResponseWriter, req *http.Request) {
 	log.Println("GET /")
 	tmpl := templates["index.html"]
+
+	originIp := retrieveOriginIP(req)
+
+	if !originIpAllowed(originIp) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	scannerNodeIP := ""
 
