@@ -214,27 +214,18 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 	}
 }
 
-type HostPortStatus struct {
-	IP       string `json:"ip"`
-	Port     int    `json:"port"`
-	Verified bool   `json:"verified"`
+type ResponseStatus struct {
+	Status string `json:"status"`
 }
 
 func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *http.Request) {
 	envVarStatusPublicPorts := env.EnvVar("STATUS_PUBLIC_PORTS", "true")
 	envVarStatusLocalPorts := env.EnvVar("STATUS_LOCAL_PORTS", "false")
 
-	statuses := make([]HostPortStatus, 0)
 	hasUnverifiedPorts := false
 
 	if envVarStatusPublicPorts == "true" {
 		for _, port := range netScanner.PublicNode.Ports {
-			statuses = append(statuses, HostPortStatus{
-				IP:       netScanner.PublicNode.IP,
-				Port:     port.PortNumber,
-				Verified: port.Verified,
-			})
-
 			if !port.Verified {
 				hasUnverifiedPorts = true
 			}
@@ -246,12 +237,6 @@ func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *h
 			node := value.(*networking.Node)
 
 			for _, port := range node.Ports {
-				statuses = append(statuses, HostPortStatus{
-					IP:       node.IP,
-					Port:     port.PortNumber,
-					Verified: port.Verified,
-				})
-
 				if !port.Verified {
 					hasUnverifiedPorts = true
 				}
@@ -263,13 +248,20 @@ func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *h
 
 	w.Header().Set("Content-Type", "application/json")
 
+	statusBody := ResponseStatus{
+		Status: "OK",
+	}
+
 	if hasUnverifiedPorts {
+		statusBody.Status = "NOK"
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	} else {
 		w.WriteHeader(http.StatusOK)
+
+		statusBody.Status = "OK"
 	}
 
-	jsonResponse, err := json.Marshal(statuses)
+	jsonResponse, err := json.Marshal(statusBody)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
