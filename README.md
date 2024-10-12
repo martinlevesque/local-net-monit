@@ -30,6 +30,7 @@ There are 2 services in this repository:
 A docker-compose.yml file is provided to run the services. You can run the `localNetMonit` service as follows:
 
 ```bash
+touch ./localNetMonit.json # initialize the snapshot file
 docker compose up local-net-monit --build -d
 ```
 
