@@ -1,5 +1,8 @@
 # local-net-monit
 
+![image](https://github.com/user-attachments/assets/a868b8cb-c88c-48b1-a907-90cb765e66e6)
+
+
 ## Features
 
 - Monitor local ports
