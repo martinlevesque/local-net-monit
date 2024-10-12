@@ -1,6 +1,13 @@
 # local-net-monit
 
+`local-net-monit` allows you to monitor the ports on your local network, for each given accessible host from the machine running the service.
+It also allows to monitor the ports accessible from the internet, by calling a second service which needs to setup externally of your LAN.
+
+See below a screenshot of the web interface (`cmd/localNetMonit`), which shows the status of the ports monitored by the service.
+
 ![image](https://github.com/user-attachments/assets/a868b8cb-c88c-48b1-a907-90cb765e66e6)
+
+
 
 
 ## Features
