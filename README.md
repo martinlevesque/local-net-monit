@@ -21,7 +21,7 @@ A JSON endpoint is exposed `/status` from the service `cmd/localNetMonit` which 
 
 There are 2 services in this repository:
 
-- `cmd/localNetMonit` - Monitor local ports and public ports, and provide a web interface to visualize ports status. You will typically set it up on a home server or any machine on your local network.
+- `cmd/localNetMonit` - Monitor local ports and public ports, and provide a web interface to visualize ports status. You will typically set it up on a home server or any machine on your local network. Note that it only scans for TCP ports.
 - `cmd/remotePortCheckServer` - A service to check the status of the public ports. When public ports monitoring is enabled (see environment variables section), this server is called by the `localNetMonit` service to check the status of the public ports. A sample instance is deployed here https://remote-port-checker-server.fly.dev/ (see the `fly.toml` file in the root of the repository). This service is needed for monitoring public ports as it needs to be deployed externally of your LAN.
 
 
