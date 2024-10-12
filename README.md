@@ -7,7 +7,7 @@ See below a screenshot of the web interface (`cmd/localNetMonit`), which shows t
 
 ![image](https://github.com/user-attachments/assets/a868b8cb-c88c-48b1-a907-90cb765e66e6)
 
-
+![image](https://github.com/user-attachments/assets/d652efed-701f-4096-9c2f-d0eca359ab04)
 
 
 ## Features
