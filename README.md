@@ -53,6 +53,7 @@ It runs on port 8081 by default.
 - `STATUS_LOCAL_PORTS` (true/false) - Default: false. When enabled, the status endpoint /status will return non 200 if at least one local port is not yet verified.
 - `PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 120. The interval in minutes to do a full check of the public ports
 - `LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES` - Default: 60. The interval in minutes to do a full check of the local ports
-- `NB_PUBLIC_PORTS_TO_CHECK_PER_BATCH` - Default: 20. The number of public ports to check concurrently
+- `NODE_UPTIME_TIMEOUT_HOURS` - Default: 128. Number of hours where a local host/node is offline and still shown in local IP addresses.
 - `SNAPSHOT_STORAGE_PATH` - Default: localNetMonit.json. The path to store the snapshot by the localNetMonit service
 - `WEB_ROOT_ALLOWED_ORIGIN_IP_PATTERN`. Example ^10\.0\.0\..*$ When set, only allow origin IPs matching the regex, for requests on the web root.
+- `NB_PUBLIC_PORTS_TO_CHECK_PER_BATCH` - Default: 20. The number of public ports to check concurrently

@@ -50,6 +50,8 @@ type Node struct {
 	IP               string
 	LastPingDuration time.Duration
 	Ports            []Port
+	Online           bool
+	LastOnlineAt     *time.Time
 }
 
 type NetScanner struct {
@@ -211,10 +213,22 @@ func loadNode(data map[string]interface{}) *Node {
 
 	}
 
+	parsedLastOnlineAt, err := time.Parse(time.RFC3339, data["LastOnlineAt"].(string))
+
+	var lastOnlineAt *time.Time
+
+	if err != nil {
+		lastOnlineAt = nil
+	} else {
+		lastOnlineAt = &parsedLastOnlineAt
+	}
+
 	node := &Node{
 		IP:               data["IP"].(string),
 		LastPingDuration: time.Duration(data["LastPingDuration"].(float64)),
 		Ports:            ports,
+		Online:           data["Online"].(bool),
+		LastOnlineAt:     lastOnlineAt,
 	}
 
 	return node
@@ -517,19 +531,23 @@ func (ns *NetScanner) fullNetworkPings(localIP net.IP, networkIps []net.IP) {
 
 func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 	log.Printf("Pinging %s\n", ip.String())
+	now := time.Now()
 
 	pingResult, err := ResolvePing(ip.String())
 
 	if err != nil {
 
-		if node, ok := ns.NodeStatuses.Load(ip.String()); ok {
-			ns.NodeStatuses.Delete(ip.String())
+		if untypedNode, ok := ns.NodeStatuses.Load(ip.String()); ok {
+			node := untypedNode.(*Node)
+
+			node.Online = true
+			node.LastOnlineAt = &now
 
 			ns.NotifyChange(NetworkChange{
 				ChangeType:  NetworkChangeTypeNodeDeleted,
 				Description: fmt.Sprintf("Node %s deleted", ip.String()),
 				UpdatedNode: nil,
-				DeletedNode: node.(*Node),
+				DeletedNode: node,
 			})
 		}
 
@@ -542,6 +560,8 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 	if untypedNode, ok := ns.NodeStatuses.Load(ip.String()); ok {
 		node := untypedNode.(*Node)
 		node.LastPingDuration = pingResult.Duration
+		node.Online = true
+		node.LastOnlineAt = &now
 		currrentNode = node
 		ns.NodeStatuses.Store(ip.String(), node)
 
@@ -556,6 +576,8 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 			IP:               ip.String(),
 			LastPingDuration: pingResult.Duration,
 			Ports:            []Port{},
+			Online:           true,
+			LastOnlineAt:     &now,
 		}
 
 		ns.NodeStatuses.Store(ip.String(), node)
