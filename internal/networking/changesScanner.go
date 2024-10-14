@@ -257,9 +257,15 @@ func PublicPortsFullCheckInterval() time.Duration {
 	return time.Duration(env.EnvVarInt("PUBLIC_PORTS_FULL_CHECK_INTERVAL_MINUTES", 120)) * time.Minute
 }
 
+func NodeUptimeTimeoutInterval() time.Duration {
+	return time.Duration(env.EnvVarInt("NODE_UPTIME_TIMEOUT_HOURS", 128)) * time.Hour
+}
+
 func (ns *NetScanner) Scan() {
 	for {
 		log.Println("Scanning loop started")
+
+		ns.VerifyNodeUptimeTimeouts()
 
 		publicIP, err := ResolverPublicIp()
 
@@ -290,6 +296,22 @@ func (ns *NetScanner) Scan() {
 		log.Println("Scanning loop ended")
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func (ns *NetScanner) VerifyNodeUptimeTimeouts() {
+	ns.NodeStatuses.Range(func(key, untypedNode interface{}) bool {
+		node := untypedNode.(*Node)
+
+		if node.LastOnlineAt == nil {
+			return true
+		}
+
+		if time.Since(*node.LastOnlineAt) > NodeUptimeTimeoutInterval() {
+			ns.NodeStatuses.Delete(key.(string))
+		}
+
+		return true
+	})
 }
 
 func (ns *NetScanner) scanLocalNodePorts() {
