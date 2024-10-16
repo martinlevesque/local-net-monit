@@ -5,7 +5,7 @@ It also allows to monitor the ports accessible from the internet, by calling a s
 
 See below a screenshot of the web interface (`cmd/localNetMonit`), which shows the status of the ports monitored by the service.
 
-![image](https://github.com/user-attachments/assets/a868b8cb-c88c-48b1-a907-90cb765e66e6)
+![image](https://github.com/user-attachments/assets/d2e009fe-07b9-43f6-8697-26ede14b76a2)
 
 As you can see, on the top of the screen, public ports are shown and below are the ports accessible from the local network for all machines currently up.
 
