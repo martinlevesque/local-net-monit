@@ -213,14 +213,12 @@ func loadNode(data map[string]interface{}) *Node {
 
 	}
 
-	parsedLastOnlineAt, err := time.Parse(time.RFC3339, data["LastOnlineAt"].(string))
-
-	var lastOnlineAt *time.Time
-
-	if err != nil {
-		lastOnlineAt = nil
-	} else {
-		lastOnlineAt = &parsedLastOnlineAt
+	var parsedLastOnlineAt *time.Time
+	if lastOnlineAt, ok := data["LastOnlineAt"]; ok && lastOnlineAt != nil {
+		parsedTime, err := time.Parse(time.RFC3339, lastOnlineAt.(string))
+		if err == nil {
+			parsedLastOnlineAt = &parsedTime
+		}
 	}
 
 	node := &Node{
@@ -228,7 +226,7 @@ func loadNode(data map[string]interface{}) *Node {
 		LastPingDuration: time.Duration(data["LastPingDuration"].(float64)),
 		Ports:            ports,
 		Online:           data["Online"].(bool),
-		LastOnlineAt:     lastOnlineAt,
+		LastOnlineAt:     parsedLastOnlineAt,
 	}
 
 	return node
