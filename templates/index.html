@@ -267,6 +267,22 @@
 				margin-bottom: 2px;
 			}
 		}
+
+		.status-dot {
+		  height: 10px;
+		  width: 10px;
+		  border-radius: 50%;
+		  display: inline-block;
+		  margin-bottom: 2px;
+		}
+
+		.status-dot-up {
+		  background-color: green;
+		}
+
+		.status-dot-down {
+		  background-color: red;
+		}
 	</style>
 </head>
 <body>
@@ -318,7 +334,12 @@
 			<tbody>
 				{{range $ip, $node := .NodeStatuses }}
 				<tr>
-					<td>{{ $ip }}</td>
+					<td>
+						{{ if $node.Online }}<span class="status-dot status-dot-up"></span> {{end}}
+						{{ if not $node.Online }}<span class="status-dot status-dot-down"></span> {{end}}
+
+						{{ $ip }}
+					</td>
 					<td>{{ $node.LastPingDuration }}</td>
 					<td class="ports-column">
 						<div class="port-container">
