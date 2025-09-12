@@ -3,9 +3,6 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/martinlevesque/local-net-monit/internal/env"
-	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"html/template"
 	"log"
 	"net"
@@ -15,6 +12,10 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/martinlevesque/local-net-monit/internal/env"
+	"github.com/martinlevesque/local-net-monit/internal/networking"
 )
 
 var wsConnections sync.Map
@@ -76,11 +77,16 @@ func handleWebSocket(conn *websocket.Conn) {
 	}
 }
 
-type VerifyRequest struct {
+type VerifyPortRequest struct {
 	IP       string `json:"ip"`
 	Port     int    `json:"port"`
 	Verified bool   `json:"verified"`
 	Notes    string `json:"notes"`
+}
+
+type VerifyIpRequest struct {
+	IP   string `json:"ip"`
+	Name string `json:"name"`
 }
 
 func retrieveOriginIP(r *http.Request) string {
@@ -111,13 +117,13 @@ func originIpAllowed(originIp string) bool {
 	return ipRegex.MatchString(originIp)
 }
 
-func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *http.Request) {
+func handleVerifyPort(netScanner *networking.NetScanner, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var verifyReq VerifyRequest
+	var verifyReq VerifyPortRequest
 	if err := json.NewDecoder(r.Body).Decode(&verifyReq); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		log.Printf("Error decoding JSON: %v", err)
@@ -158,6 +164,52 @@ func handleVerify(netScanner *networking.NetScanner, w http.ResponseWriter, r *h
 	}
 
 	if portUpdated {
+		// Send a response back to the client
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"success"}`))
+	} else {
+		http.Error(w, "IP:Port not found", http.StatusNotFound)
+	}
+}
+
+func handleVerifyIp(netScanner *networking.NetScanner, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var verifyReq VerifyIpRequest
+	if err := json.NewDecoder(r.Body).Decode(&verifyReq); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		log.Printf("Error decoding JSON: %v", err)
+		return
+	}
+
+	// Process the data as needed
+	log.Printf("Received verification request: IP=%s, Name=%s",
+		verifyReq.IP, verifyReq.Name)
+
+	ipUpdated := false
+
+	// Look for the local node statuses
+	if node, ok := netScanner.NodeStatuses.Load(verifyReq.IP); ok {
+		node := node.(*networking.Node)
+
+		hasUpdated := node.VerifyIp(verifyReq.Name)
+
+		netScanner.NotifyChange(networking.NetworkChange{
+			ChangeType:  networking.NetworkChangeIpInfoUpdated,
+			Description: fmt.Sprintf("Node %s info updated", verifyReq.IP),
+			UpdatedNode: node,
+			DeletedNode: nil,
+		})
+
+		if hasUpdated {
+			ipUpdated = true
+		}
+	}
+
+	if ipUpdated {
 		// Send a response back to the client
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"success"}`))
@@ -294,8 +346,12 @@ func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 		handleWebSocket(conn)
 	})
 
-	mux.HandleFunc("POST /verify", func(w http.ResponseWriter, r *http.Request) {
-		handleVerify(netScanner, w, r)
+	mux.HandleFunc("POST /ports/verify", func(w http.ResponseWriter, r *http.Request) {
+		handleVerifyPort(netScanner, w, r)
+	})
+
+	mux.HandleFunc("POST /ips/verify", func(w http.ResponseWriter, r *http.Request) {
+		handleVerifyIp(netScanner, w, r)
 	})
 
 	mux.HandleFunc("GET /status", func(w http.ResponseWriter, r *http.Request) {

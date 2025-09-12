@@ -1,513 +1,696 @@
 <html>
-<head>
-	<title>Local Net Monit</title>
-
-	<style>
-		/* charcoal dark background */
-		body {
-			background-color: #333;
-			color: #ddd;
-			font-family: Arial, sans-serif;
-		}
-
-		/* Horizontal line at 33% from the top */
-		.horizontal-line {
-			position: absolute;
-			top: 33%;
-			width: 100%;
-			border-top: 2px solid black;
-		}
-
-		.title-top {
-			text-align: center;
-			font-size: 24px;
-			margin-top: 20px;
-		}
-
-		.title-local-network {
-			position: absolute;
-			top: calc(33% + 10px); /* Positioning below the line */
-			left: 50%;
-			transform: translateX(-50%);
-			font-size: 24px;
-		}
-
-		.port-boxes {
-		    position: absolute;
-		    top: calc(130px); /* Adjust the vertical position above the line */
-		    left: 50%;
-		    transform: translateX(-50%);
-		    display: flex;
-		    gap: 20px;
-		    
-		}
-
-
-
-		/* Styling for Ethernet-like port box */
-		.port-box {
-		    width: 70px;
-		    height: 60px;
-		    background-color: #222;
-		    border: 3px solid #888; /* Simulating a metallic border */
-		    border-radius: 3px;
-		    position: relative;
-		    display: flex;
-		    justify-content: center;
-		    align-items: center;
-		    color: white;
-		    font-size: 15px;
-		    text-align: center;
-		    cursor: pointer; /* Make it clickable */
-		}
-
-		/* Simulating port "keyhole" slots at the bottom */
-		.port-box::before {
-		    content: '';
-		    position: absolute;
-		    bottom: 5px;
-		    left: 50%;
-		    transform: translateX(-50%);
-		    width: 20px;
-		    height: 5px;
-		    background-color: green; /* Darker area representing the socket holes */
-		    border-radius: 2px;
-		}
-
-		.port-box-warning::before {
-		    content: '';
-		    position: absolute;
-		    bottom: 5px;
-		    left: 50%;
-		    transform: translateX(-50%);
-		    width: 20px;
-		    height: 5px;
-		    background-color: red; /* Darker area representing the socket holes */
-		    border-radius: 2px;
-		}
-
-		/* Simulating the plastic shield on top */
-		.port-box::after {
-		    content: '';
-		    position: absolute;
-		    top: 0;
-		    left: 0;
-		    width: 100%;
-		    height: 50%;
-		    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2), transparent);
-		    border-top-left-radius: 2px;
-		    border-top-right-radius: 2px;
-		}
-
-		/* Styling for the IP table */
-		.ip-table-container {
-			position: absolute;
-			top: calc(33% + 60px); /* Adjust vertical position below the line */
-			width: 100%;
-			display: flex;
-			justify-content: center;
-		}
-
-		.ip-table {
-			width: 80%;
-			border-collapse: collapse;
-			background-color: #444;
-			border: 1px solid #555;
-		}
-
-		.ip-table th, .ip-table td {
-			padding: 12px;
-			border: 1px solid #555;
-			text-align: center;
-		}
-
-		.ip-table th {
-			background-color: #555;
-			color: #ddd;
-		}
-
-		.ip-table td {
-			background-color: #333;
-			color: #fff;
-		}
-
-		/* Max width limit for ports column */
-		.ip-table .ports-column {
-			max-width: 300px;
-			overflow-wrap: break-word; /* Ensure ports wrap if the content exceeds max width */
-		}
-
-		.port-container {
-			display: flex;
-			gap: 10px;
-			flex-wrap: wrap;
-			justify-content: center;
-			max-width: 100%; /* Ensure ports don't overflow the column */
-		}
-
-		/* Popup modal */
-		.modal {
-			display: none; /* Hidden by default */
-			position: fixed;
-			z-index: 1;
-			left: 0;
-			top: 0;
-			width: 100%;
-			height: 100%;
-			background-color: rgba(0, 0, 0, 0.7); /* Black background with opacity */
-		}
-
-		.modal-content {
-			background-color: #444;
-			margin: 15% auto;
-			padding: 20px;
-			border: 1px solid #888;
-			width: 500px; 
-			color: #fff;
-			text-align: center;
-			border-radius: 8px; /* Rounded corners */
-		}
-
-		.close {
-			color: #aaa;
-			float: right;
-			font-size: 28px;
-			font-weight: bold;
-		}
-
-		.close:hover,
-		.close:focus {
-			color: #fff;
-			text-decoration: none;
-			cursor: pointer;
-		}
-
-		/* Styling for form elements */
-		form {
-			display: flex;
-			flex-direction: column;
-			align-items: flex-start; /* Align labels and inputs vertically */
-			gap: 20px;
-			margin-top: 20px;
-		}
-
-		label {
-			font-size: 18px;
-			margin-bottom: 5px;
-		}
-
-		/* Align the checkbox with its label */
-		.modal-checkbox-container {
-			display: flex;
-			align-items: center;
-		}
-
-		.modal-port-notes-container {
-			text-align: left;
-		}
-
-		input[type="checkbox"] {
-			transform: scale(1.5);
-			margin-left: 10px;
-		}
-
-		textarea {
-			width: 100%;
-			padding: 10px;
-			font-size: 16px;
-			border-radius: 4px;
-			border: 1px solid #888;
-			background-color: #333;
-			color: #fff;
-			resize: vertical; /* Allow vertical resizing */
-		}
-
-		button {
-			padding: 10px 20px;
-			font-size: 18px;
-			border: none;
-			border-radius: 4px;
-			background-color: #5cb85c;
-			color: #fff;
-			cursor: pointer;
-			transition: background-color 0.3s;
-		}
-
-		button:hover {
-			background-color: #4cae4c;
-		}
-
-		.public-scans-timestamps {
-			position: absolute;
-			top: 10px;
-			left: 10px;
-			font-size: 12px;
-
-			p {
-				margin-top: 0px;
-				margin-bottom: 2px;
-			}
-		}
-
-		.recent-changes {
-			position: absolute;
-			top: 40px;
-			left: 10px;
-			font-size: 12px;
-		}
-
-		.local-scans-timestamps {
-			position: absolute;
-			top: calc(33% + 10px); /* Positioning below the line */
-			left: 10px;
-			font-size: 12px;
-
-			p {
-				margin-top: 0px;
-				margin-bottom: 2px;
-			}
-		}
-
-		.status-dot {
-		  height: 10px;
-		  width: 10px;
-		  border-radius: 50%;
-		  display: inline-block;
-		  margin-bottom: 2px;
-		}
-
-		.status-dot-up {
-		  background-color: green;
-		}
-
-		.status-dot-down {
-		  background-color: red;
-		}
-	</style>
-</head>
-<body>
-	<div class="title-top">Internet ({{ .NetScanner.PublicNode.IP }})</div>
-
-	<div class="public-scans-timestamps">
-		<p>Last Public Full Scan: <span class="timestamp-to-convert">{{ .LastPublicFullScanLoop }}</span></p>
-		<p>Last Public Partial Scan: <span class="timestamp-to-convert">{{ .LastPublicScanLoop }}</span></p>
-	</div>
-	
-	<div class="recent-changes">
-		<h3>Recent Changes:</h3>
-		<ul>
-			{{range $change := .RecentChanges}}
-				<li><span class="timestamp-to-convert">{{$change.Timestamp}}</span> - {{$change.Description}}</li>
-			{{end}}
-		</ul>
-	</div>
-
-	<div class="local-scans-timestamps">
-		<p>Last Local Full Scan: <span class="timestamp-to-convert">{{ .LastLocalFullScanLoop }}</span></p>
-		<p>Last Local Partial Scan: <span class="timestamp-to-convert">{{ .LastLocalScanLoop }}</span></p>
-	</div>
-
-	<div class="title-local-network">Local Network</div>
-	
-	<div class="port-boxes">
-		{{range $port := .NetScanner.PublicNode.Ports }}
-			<div title='{{$port.Notes}}' class="port-box {{if not $port.Verified}}port-box-warning{{end}}" 
-			     onclick="openModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})">
-				Port {{ $port.PortNumber }} {{if $port.Notes}}*{{end}}
-			</div>
-		{{end}}
-	</div>
-
-	<div class="horizontal-line"></div>
-
-	<!-- IP table below the horizontal line -->
-
-	<div class="ip-table-container">
-		<table class="ip-table">
-			<thead>
-				<tr>
-					<th>IP Address</th>
-					<th>Latency</th>
-					<th>Ports</th>
-				</tr>
-			</thead>
-			<tbody>
-				{{range $ip, $node := .NodeStatuses }}
-				<tr>
-					<td>
-						{{ if $node.Online }}<span class="status-dot status-dot-up"></span> {{end}}
-						{{ if not $node.Online }}<span class="status-dot status-dot-down"></span> {{end}}
-
-						{{ $ip }}
-					</td>
-					<td>{{ $node.LastPingDuration }}</td>
-					<td class="ports-column">
-						<div class="port-container">
-							{{range $port := $node.Ports }}
-								<div title='{{$port.Notes}}' class="port-box {{ if not $port.Verified }}port-box-warning{{end}}"
-									onclick="openModal({ ip: '{{ $ip }}', portNumber: {{ $port.PortNumber }}, notes: '{{ $port.Notes }}', verified: {{ $port.Verified }}})">
-									{{ $port.PortNumber }} {{if $port.Notes}}*{{end}}
-								</div>
-							{{end}}
-						</div>
-					</td>
-				</tr>
-				{{end}}
-			</tbody>
-		</table>
-	</div>
-
-	<!-- Modal box for showing port details -->
-	<div id="portModal" class="modal">
-		<div class="modal-content">
-			<span class="close" onclick="closeModal()">&times;</span>
-			<h2 id="modal-title"></h2>
-			<form id="port-form">
-				<input type="hidden" id="port-ip" name="port-ip" />
-				<input type="hidden" id="port-port-number" name="port-port-number" />
-
-				<div class="modal-checkbox-container">
-					<label for="port-verified">Verified:</label>
-					<input type="checkbox" id="port-verified" name="port-verified" />
-				</div>
-
-				<div class="modal-port-notes-container">
-					<label for="port-notes">Notes:</label>
-					<textarea id="port-notes" name="port-notes" rows="4" cols="50"></textarea>
-				</div>
-
-				<button type="submit">Save</button>
-			</form>
-		</div>
-	</div>
-
-	<script>
-		let g_changesReceived = false;
-		let g_updateTimeout = null;
-
-		function wsUrl() {
-			const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-			const hostname = window.location.hostname;
-
-			let port = window.location.port;
-
-			if (!port) {
-			  port = protocol === "wss" ? 443 : 80;
-			}
-			const wsUrl = `${protocol}://${hostname}:${port}/ws`;
-
-			return wsUrl;
-		}
-
-		function openModal(info) {
-			document.getElementById('modal-title').textContent = `${info.ip}:${info.portNumber} details`;
-			document.getElementById('port-verified').checked = info.verified;
-			document.getElementById('port-notes').value = info.notes;
-			document.getElementById('port-ip').value = info.ip;
-			document.getElementById('port-port-number').value = info.portNumber;
-			document.getElementById('portModal').style.display = 'block';
-		}
-
-		function closeModal() {
-			document.getElementById('portModal').style.display = 'none';
-
-			if (g_changesReceived) {
-				if (g_updateTimeout) {
-					clearTimeout(g_updateTimeout);
-				}
-
-				location.reload();
-			}
-		}
-
-		function modalOpened() {
-			return document.getElementById('portModal').style.display === 'block';
-		}
-
-		// Handle form submission
-		document.getElementById('port-form').onsubmit = function(e) {
-			e.preventDefault();
-			const verified = document.getElementById('port-verified').checked;
-			const notes = document.getElementById('port-notes').value;
-			const ip = document.getElementById('port-ip').value;
-			const portNumber = parseInt(document.getElementById('port-port-number').value);
-
-			fetch('/verify', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					ip: ip,
-					port: portNumber,
-					verified: verified,
-					notes: notes
-				})
-			})
-			.then(response => {
-				if (response.ok) {
-					return response.json();
-				} else {
-					throw new Error('Network response was not ok');
-				}
-			})
-			.then(data => {
-					location.reload();
-			})
-			.catch(error => {
-				console.error('Error:', error);
-			})
-			.finally(() => {
-				closeModal();
-			});
-		};
-
-
-		const socket = new WebSocket(wsUrl());
-
-		socket.onopen = function () {
-			console.log('web sock connection opened');
-		};
-
-		socket.onmessage = function (e) {
-			g_changesReceived = true;
-
-			if (modalOpened()) {
-				return;
-			} else {
-				if (!g_updateTimeout) {
-					g_updateTimeout = setTimeout(refreshDashboard, 10 * 1000);
-				}
-			}
-		};
-
-		function refreshDashboard() {
-			if (!modalOpened()) {
-				g_changesReceived = false;
-				uptimeTimeout = null;
-
-				location.reload();
-			}
-		}
-
-		function send() {
-			socket.send(input.value);
-			input.value = "";
-		}
-
-		function datetimeStringToLocalDatetimeString(datetimeString) {
-			const date = new Date(datetimeString);
-			return date.toLocaleString();
-		}
-
-		// On load
-		const timestampElements = document.getElementsByClassName("timestamp-to-convert");
-
-		for (const element of timestampElements) {
-			const timestamp = element.textContent;
-			element.textContent = datetimeStringToLocalDatetimeString(timestamp);
-		}
-	</script>
-
-</body>
+    <head>
+        <title>Local Net Monit</title>
+
+        <style>
+            /* charcoal dark background */
+            body {
+                background-color: #333;
+                color: #ddd;
+                font-family: Arial, sans-serif;
+            }
+
+            /* Horizontal line at 33% from the top */
+            .horizontal-line {
+                position: absolute;
+                top: 33%;
+                width: 100%;
+                border-top: 2px solid black;
+            }
+
+            .title-top {
+                text-align: center;
+                font-size: 24px;
+                margin-top: 20px;
+            }
+
+            .title-local-network {
+                position: absolute;
+                top: calc(33% + 10px); /* Positioning below the line */
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 24px;
+            }
+
+            .port-boxes {
+                position: absolute;
+                top: calc(
+                    130px
+                ); /* Adjust the vertical position above the line */
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 20px;
+            }
+
+            /* Styling for Ethernet-like port box */
+            .port-box {
+                width: 70px;
+                height: 60px;
+                background-color: #222;
+                border: 3px solid #888; /* Simulating a metallic border */
+                border-radius: 3px;
+                position: relative;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                color: white;
+                font-size: 15px;
+                text-align: center;
+                cursor: pointer; /* Make it clickable */
+            }
+
+            /* Simulating port "keyhole" slots at the bottom */
+            .port-box::before {
+                content: "";
+                position: absolute;
+                bottom: 5px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 20px;
+                height: 5px;
+                background-color: green; /* Darker area representing the socket holes */
+                border-radius: 2px;
+            }
+
+            .port-box-warning::before {
+                content: "";
+                position: absolute;
+                bottom: 5px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 20px;
+                height: 5px;
+                background-color: red; /* Darker area representing the socket holes */
+                border-radius: 2px;
+            }
+
+            /* Simulating the plastic shield on top */
+            .port-box::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 50%;
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.2),
+                    transparent
+                );
+                border-top-left-radius: 2px;
+                border-top-right-radius: 2px;
+            }
+
+            /* Styling for the IP table */
+            .ip-table-container {
+                position: absolute;
+                top: calc(
+                    33% + 60px
+                ); /* Adjust vertical position below the line */
+                width: 100%;
+                display: flex;
+                justify-content: center;
+            }
+
+            .ip-table {
+                width: 80%;
+                border-collapse: collapse;
+                background-color: #444;
+                border: 1px solid #555;
+            }
+
+            .ip-table th,
+            .ip-table td {
+                padding: 12px;
+                border: 1px solid #555;
+                text-align: center;
+            }
+
+            .ip-table th {
+                background-color: #555;
+                color: #ddd;
+            }
+
+            .ip-table td {
+                background-color: #333;
+                color: #fff;
+            }
+
+            /* Max width limit for ports column */
+            .ip-table .ports-column {
+                max-width: 300px;
+                overflow-wrap: break-word; /* Ensure ports wrap if the content exceeds max width */
+            }
+
+            .port-container {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                justify-content: center;
+                max-width: 100%; /* Ensure ports don't overflow the column */
+            }
+
+            /* Clickable IP styling */
+            .clickable-ip {
+                cursor: pointer;
+                color: #5cb85c;
+                text-decoration: underline;
+            }
+
+            .clickable-ip:hover {
+                color: #4cae4c;
+            }
+
+            .ip-display {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            /* Popup modal */
+            .modal {
+                display: none; /* Hidden by default */
+                position: fixed;
+                z-index: 1;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(
+                    0,
+                    0,
+                    0,
+                    0.7
+                ); /* Black background with opacity */
+            }
+
+            .modal-content {
+                background-color: #444;
+                margin: 15% auto;
+                padding: 20px;
+                border: 1px solid #888;
+                width: 500px;
+                color: #fff;
+                text-align: center;
+                border-radius: 8px; /* Rounded corners */
+            }
+
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+
+            .close:hover,
+            .close:focus {
+                color: #fff;
+                text-decoration: none;
+                cursor: pointer;
+            }
+
+            /* Styling for form elements */
+            form {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start; /* Align labels and inputs vertically */
+                gap: 20px;
+                margin-top: 20px;
+            }
+
+            label {
+                font-size: 18px;
+                margin-bottom: 5px;
+            }
+
+            /* Align the checkbox with its label */
+            .modal-checkbox-container {
+                display: flex;
+                align-items: center;
+            }
+
+            .modal-port-notes-container,
+            .modal-ip-name-container {
+                text-align: left;
+            }
+
+            input[type="checkbox"] {
+                transform: scale(1.5);
+                margin-left: 10px;
+            }
+
+            textarea,
+            input[type="text"] {
+                width: 100%;
+                padding: 10px;
+                font-size: 16px;
+                border-radius: 4px;
+                border: 1px solid #888;
+                background-color: #333;
+                color: #fff;
+                resize: vertical; /* Allow vertical resizing */
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 18px;
+                border: none;
+                border-radius: 4px;
+                background-color: #5cb85c;
+                color: #fff;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
+
+            button:hover {
+                background-color: #4cae4c;
+            }
+
+            .public-scans-timestamps {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                font-size: 12px;
+
+                p {
+                    margin-top: 0px;
+                    margin-bottom: 2px;
+                }
+            }
+
+            .recent-changes {
+                position: absolute;
+                top: 40px;
+                left: 10px;
+                font-size: 12px;
+            }
+
+            .local-scans-timestamps {
+                position: absolute;
+                top: calc(33% + 10px); /* Positioning below the line */
+                left: 10px;
+                font-size: 12px;
+
+                p {
+                    margin-top: 0px;
+                    margin-bottom: 2px;
+                }
+            }
+
+            .status-dot {
+                height: 10px;
+                width: 10px;
+                border-radius: 50%;
+                display: inline-block;
+                margin-bottom: 2px;
+            }
+
+            .status-dot-up {
+                background-color: green;
+            }
+
+            .status-dot-down {
+                background-color: red;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="title-top">Internet ({{ .NetScanner.PublicNode.IP }})</div>
+
+        <div class="public-scans-timestamps">
+            <p>
+                Last Public Full Scan:
+                <span class="timestamp-to-convert"
+                    >{{ .LastPublicFullScanLoop }}</span
+                >
+            </p>
+            <p>
+                Last Public Partial Scan:
+                <span class="timestamp-to-convert"
+                    >{{ .LastPublicScanLoop }}</span
+                >
+            </p>
+        </div>
+
+        <div class="recent-changes">
+            <h3>Recent Changes:</h3>
+            <ul>
+                {{range $change := .RecentChanges}}
+                <li>
+                    <span class="timestamp-to-convert"
+                        >{{$change.Timestamp}}</span
+                    >
+                    - {{$change.Description}}
+                </li>
+                {{end}}
+            </ul>
+        </div>
+
+        <div class="local-scans-timestamps">
+            <p>
+                Last Local Full Scan:
+                <span class="timestamp-to-convert"
+                    >{{ .LastLocalFullScanLoop }}</span
+                >
+            </p>
+            <p>
+                Last Local Partial Scan:
+                <span class="timestamp-to-convert"
+                    >{{ .LastLocalScanLoop }}</span
+                >
+            </p>
+        </div>
+
+        <div class="title-local-network">Local Network</div>
+
+        <div class="port-boxes">
+            {{range $port := .NetScanner.PublicNode.Ports }}
+            <div
+                title="{{$port.Notes}}"
+                class="port-box {{if not $port.Verified}}port-box-warning{{end}}"
+                onclick="openPortModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})"
+            >
+                Port {{ $port.PortNumber }} {{if $port.Notes}}*{{end}}
+            </div>
+            {{end}}
+        </div>
+
+        <div class="horizontal-line"></div>
+
+        <!-- IP table below the horizontal line -->
+
+        <div class="ip-table-container">
+            <table class="ip-table">
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Latency</th>
+                        <th>Ports</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $ip, $node := .NodeStatuses }}
+                    <tr>
+                        <td>
+                            <div class="ip-display">
+                                {{ if $node.Online }}<span
+                                    class="status-dot status-dot-up"
+                                ></span>
+                                {{end}} {{ if not $node.Online }}<span
+                                    class="status-dot status-dot-down"
+                                ></span>
+                                {{end}}
+
+                                <span
+                                    class="clickable-ip"
+                                    onclick="openIpModal('{{ $ip }}', '{{ $node.Name }}')"
+                                >
+                                    {{ $ip }}
+                                </span>
+                                <span>
+                                    {{if $node.Name}} ({{ $node.Name }}) {{end}}
+                                </span>
+                            </div>
+                        </td>
+                        <td>{{ $node.LastPingDuration }}</td>
+                        <td class="ports-column">
+                            <div class="port-container">
+                                {{range $port := $node.Ports }}
+                                <div
+                                    title="{{$port.Notes}}"
+                                    class="port-box {{ if not $port.Verified }}port-box-warning{{end}}"
+                                    onclick="openPortModal({ ip: '{{ $ip }}', portNumber: {{ $port.PortNumber }}, notes: '{{ $port.Notes }}', verified: {{ $port.Verified }}})"
+                                >
+                                    {{ $port.PortNumber }} {{if
+                                    $port.Notes}}*{{end}}
+                                </div>
+                                {{end}}
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal box for showing port details -->
+        <div id="portModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closePortModal()">&times;</span>
+                <h2 id="modal-title"></h2>
+                <form id="port-form">
+                    <input type="hidden" id="port-ip" name="port-ip" />
+                    <input
+                        type="hidden"
+                        id="port-port-number"
+                        name="port-port-number"
+                    />
+
+                    <div class="modal-checkbox-container">
+                        <label for="port-verified">Verified:</label>
+                        <input
+                            type="checkbox"
+                            id="port-verified"
+                            name="port-verified"
+                        />
+                    </div>
+
+                    <div class="modal-port-notes-container">
+                        <label for="port-notes">Notes:</label>
+                        <textarea
+                            id="port-notes"
+                            name="port-notes"
+                            rows="4"
+                            cols="50"
+                        ></textarea>
+                    </div>
+
+                    <button type="submit">Save</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal box for configuring IP names -->
+        <div id="ipModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeIpModal()">&times;</span>
+                <h2 id="ip-modal-title"></h2>
+                <form id="ip-form">
+                    <input type="hidden" id="ip-address" name="ip-address" />
+
+                    <div class="modal-ip-name-container">
+                        <label for="ip-name">Name:</label>
+                        <input
+                            type="text"
+                            id="ip-name"
+                            name="ip-name"
+                            placeholder="Enter a friendly name for this device"
+                        />
+                    </div>
+
+                    <button type="submit">Save</button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            let g_changesReceived = false;
+            let g_updateTimeout = null;
+
+            function wsUrl() {
+                const protocol =
+                    window.location.protocol === "https:" ? "wss" : "ws";
+                const hostname = window.location.hostname;
+
+                let port = window.location.port;
+
+                if (!port) {
+                    port = protocol === "wss" ? 443 : 80;
+                }
+                const wsUrl = `${protocol}://${hostname}:${port}/ws`;
+
+                return wsUrl;
+            }
+
+            function openPortModal(info) {
+                document.getElementById("modal-title").textContent =
+                    `${info.ip}:${info.portNumber} details`;
+                document.getElementById("port-verified").checked =
+                    info.verified;
+                document.getElementById("port-notes").value = info.notes;
+                document.getElementById("port-ip").value = info.ip;
+                document.getElementById("port-port-number").value =
+                    info.portNumber;
+                document.getElementById("portModal").style.display = "block";
+            }
+
+            function closePortModal() {
+                document.getElementById("portModal").style.display = "none";
+
+                if (g_changesReceived) {
+                    if (g_updateTimeout) {
+                        clearTimeout(g_updateTimeout);
+                    }
+
+                    location.reload();
+                }
+            }
+
+            function openIpModal(ip, currentName) {
+                document.getElementById("ip-modal-title").textContent =
+                    `Configure ${ip}`;
+                document.getElementById("ip-address").value = ip;
+                document.getElementById("ip-name").value = currentName || "";
+                document.getElementById("ipModal").style.display = "block";
+            }
+
+            function closeIpModal() {
+                document.getElementById("ipModal").style.display = "none";
+
+                if (g_changesReceived) {
+                    if (g_updateTimeout) {
+                        clearTimeout(g_updateTimeout);
+                    }
+
+                    location.reload();
+                }
+            }
+
+            function modalOpened() {
+                return (
+                    document.getElementById("portModal").style.display ===
+                        "block" ||
+                    document.getElementById("ipModal").style.display === "block"
+                );
+            }
+
+            // Handle port form submission
+            document.getElementById("port-form").onsubmit = function (e) {
+                e.preventDefault();
+                const verified =
+                    document.getElementById("port-verified").checked;
+                const notes = document.getElementById("port-notes").value;
+                const ip = document.getElementById("port-ip").value;
+                const portNumber = parseInt(
+                    document.getElementById("port-port-number").value,
+                );
+
+                fetch("/ports/verify", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        ip: ip,
+                        port: portNumber,
+                        verified: verified,
+                        notes: notes,
+                    }),
+                })
+                    .then((response) => {
+                        if (response.ok) {
+                            return response.json();
+                        } else {
+                            throw new Error("Network response was not ok");
+                        }
+                    })
+                    .then((data) => {
+                        location.reload();
+                    })
+                    .catch((error) => {
+                        console.error("Error:", error);
+                    })
+                    .finally(() => {
+                        closePortModal();
+                    });
+            };
+
+            // Handle IP name form submission
+            document.getElementById("ip-form").onsubmit = function (e) {
+                e.preventDefault();
+                const ip = document.getElementById("ip-address").value;
+                const name = document.getElementById("ip-name").value;
+
+                fetch("/ips/verify", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        ip: ip,
+                        name: name,
+                    }),
+                })
+                    .then((response) => {
+                        if (response.ok) {
+                            return response.json();
+                        } else {
+                            throw new Error("Network response was not ok");
+                        }
+                    })
+                    .then((data) => {
+                        location.reload();
+                    })
+                    .catch((error) => {
+                        console.error("Error:", error);
+                    })
+                    .finally(() => {
+                        closeIpModal();
+                    });
+            };
+
+            const socket = new WebSocket(wsUrl());
+
+            socket.onopen = function () {
+                console.log("web sock connection opened");
+            };
+
+            socket.onmessage = function (e) {
+                g_changesReceived = true;
+
+                if (modalOpened()) {
+                    return;
+                } else {
+                    if (!g_updateTimeout) {
+                        g_updateTimeout = setTimeout(
+                            refreshDashboard,
+                            10 * 1000,
+                        );
+                    }
+                }
+            };
+
+            function refreshDashboard() {
+                if (!modalOpened()) {
+                    g_changesReceived = false;
+                    uptimeTimeout = null;
+
+                    location.reload();
+                }
+            }
+
+            function send() {
+                socket.send(input.value);
+                input.value = "";
+            }
+
+            function datetimeStringToLocalDatetimeString(datetimeString) {
+                const date = new Date(datetimeString);
+                return date.toLocaleString();
+            }
+
+            // On load
+            const timestampElements = document.getElementsByClassName(
+                "timestamp-to-convert",
+            );
+
+            for (const element of timestampElements) {
+                const timestamp = element.textContent;
+                element.textContent =
+                    datetimeStringToLocalDatetimeString(timestamp);
+            }
+        </script>
+    </body>
 </html>

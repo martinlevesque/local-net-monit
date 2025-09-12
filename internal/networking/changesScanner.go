@@ -3,13 +3,14 @@ package networking
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/martinlevesque/local-net-monit/internal/env"
 	"log"
 	"net"
 	"os"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/martinlevesque/local-net-monit/internal/env"
 )
 
 type NetworkChangeType string
@@ -18,6 +19,7 @@ const (
 	NetworkChangeTypeNodeUpdated                NetworkChangeType = "NodeUpdated"
 	NetworkChangeTypeNodeDeleted                NetworkChangeType = "NodeDeleted"
 	NetworkChangePortUpdated                    NetworkChangeType = "PortUpdated"
+	NetworkChangeIpInfoUpdated                  NetworkChangeType = "PortUpdated"
 	NetworkChangePublicNodeUpdated              NetworkChangeType = "PublicNodeUpdated"
 	NetworkChangeTypeFullLocalScanCompleted     NetworkChangeType = "FullLocalScanCompleted"
 	NetworkChangeTypePartialLocalScanCompleted  NetworkChangeType = "PartialLocalScanCompleted"
@@ -48,6 +50,7 @@ type Port struct {
 
 type Node struct {
 	IP               string
+	Name             string
 	LastPingDuration time.Duration
 	Ports            []Port
 	Online           bool
@@ -221,8 +224,14 @@ func loadNode(data map[string]interface{}) *Node {
 		}
 	}
 
+	name, ok := data["Name"].(string)
+	if !ok {
+		name = "" // default if not present or not a string
+	}
+
 	node := &Node{
 		IP:               data["IP"].(string),
+		Name:             name,
 		LastPingDuration: time.Duration(data["LastPingDuration"].(float64)),
 		Ports:            ports,
 		Online:           data["Online"].(bool),
@@ -245,6 +254,14 @@ func (node *Node) VerifyPort(port int, verified bool, notes string) bool {
 	}
 
 	return portUpdated
+}
+
+func (node *Node) VerifyIp(name string) bool {
+	updated := false
+
+	node.Name = name
+
+	return updated
 }
 
 func LocalPortsFullCheckInterval() time.Duration {
@@ -278,6 +295,7 @@ func (ns *NetScanner) Scan() {
 
 			ns.PublicNode = &Node{
 				IP:               publicIP,
+				Name:             "",
 				Ports:            []Port{},
 				LastPingDuration: time.Duration(0),
 			}
@@ -594,6 +612,7 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 	} else {
 		node := &Node{
 			IP:               ip.String(),
+			Name:             "n1",
 			LastPingDuration: pingResult.Duration,
 			Ports:            []Port{},
 			Online:           true,
