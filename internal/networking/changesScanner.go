@@ -612,7 +612,7 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 	} else {
 		node := &Node{
 			IP:               ip.String(),
-			Name:             "n1",
+			Name:             "",
 			LastPingDuration: pingResult.Duration,
 			Ports:            []Port{},
 			Online:           true,
