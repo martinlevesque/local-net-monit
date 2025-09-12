@@ -39,7 +39,7 @@ func TestVerifyPort_Success(t *testing.T) {
 		t.Fatalf("expected notes to be 'hello2', but got '%s'", node.Ports[1].Notes)
 	}
 }
-func TestVerifyPort_Success(t *testing.T) {
+func TestVerifyIp_Success(t *testing.T) {
 	node := &networking.Node{
 		IP:   "127.0.0.1",
 		Name: "origname",
