@@ -1,9 +1,10 @@
 package networking_test
 
 import (
-	"github.com/martinlevesque/local-net-monit/internal/networking"
 	"testing"
 	"time"
+
+	"github.com/martinlevesque/local-net-monit/internal/networking"
 )
 
 func TestVerifyPort_Success(t *testing.T) {
@@ -36,6 +37,18 @@ func TestVerifyPort_Success(t *testing.T) {
 
 	if node.Ports[1].Notes != "hello2" {
 		t.Fatalf("expected notes to be 'hello2', but got '%s'", node.Ports[1].Notes)
+	}
+}
+func TestVerifyIp_Success(t *testing.T) {
+	node := &networking.Node{
+		IP:   "127.0.0.1",
+		Name: "origname",
+	}
+
+	node.VerifyIp("newname")
+
+	if node.Name != "newname" {
+		t.Fatalf("expected to change name")
 	}
 }
 

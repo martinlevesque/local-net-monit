@@ -2,12 +2,13 @@ package web_test
 
 import (
 	"context"
-	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
-	"github.com/martinlevesque/local-net-monit/internal/networking"
-	"github.com/martinlevesque/local-net-monit/internal/web"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/martinlevesque/local-net-monit/internal/httpTooling"
+	"github.com/martinlevesque/local-net-monit/internal/networking"
+	"github.com/martinlevesque/local-net-monit/internal/web"
 )
 
 func TestWebPrepareTemplates_Success(t *testing.T) {
