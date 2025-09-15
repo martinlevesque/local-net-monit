@@ -84,6 +84,11 @@ type VerifyPortRequest struct {
 	Notes    string `json:"notes"`
 }
 
+type VerifyAllPortsRequest struct {
+	IP       string `json:"ip"`
+	Verified bool   `json:"verified"`
+}
+
 type VerifyIpRequest struct {
 	IP   string `json:"ip"`
 	Name string `json:"name"`
@@ -170,6 +175,43 @@ func handleVerifyPort(netScanner *networking.NetScanner, w http.ResponseWriter, 
 	} else {
 		http.Error(w, "IP:Port not found", http.StatusNotFound)
 	}
+}
+
+func handleVerifyAllPorts(netScanner *networking.NetScanner, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var verifyReq VerifyAllPortsRequest
+	if err := json.NewDecoder(r.Body).Decode(&verifyReq); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		log.Printf("Error decoding JSON: %v", err)
+		return
+	}
+
+	// Process the data as needed
+	log.Printf("Received verification request: IP=%s, Port=%d, Verified=%t, Notes=%s",
+		verifyReq.IP, verifyReq.Verified)
+
+	// Look for the local node statuses
+	if node, ok := netScanner.NodeStatuses.Load(verifyReq.IP); ok {
+		node := node.(*networking.Node)
+
+		for _, port := range node.Ports {
+			node.VerifyPort(port.PortNumber, verifyReq.Verified, "")
+
+			netScanner.NotifyChange(networking.NetworkChange{
+				ChangeType:  networking.NetworkChangePortUpdated,
+				Description: fmt.Sprintf("Node %s detect port %d open", verifyReq.IP, port.PortNumber),
+				UpdatedNode: node,
+				DeletedNode: nil,
+			})
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"success"}`))
 }
 
 func handleVerifyIp(netScanner *networking.NetScanner, w http.ResponseWriter, r *http.Request) {
@@ -348,6 +390,10 @@ func BootstrapHttpServer(netScanner *networking.NetScanner) *http.Server {
 
 	mux.HandleFunc("POST /ports/verify", func(w http.ResponseWriter, r *http.Request) {
 		handleVerifyPort(netScanner, w, r)
+	})
+
+	mux.HandleFunc("POST /ports/verify-all", func(w http.ResponseWriter, r *http.Request) {
+		handleVerifyAllPorts(netScanner, w, r)
 	})
 
 	mux.HandleFunc("POST /ips/verify", func(w http.ResponseWriter, r *http.Request) {
