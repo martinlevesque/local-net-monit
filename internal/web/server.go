@@ -191,7 +191,7 @@ func handleVerifyAllPorts(netScanner *networking.NetScanner, w http.ResponseWrit
 	}
 
 	// Process the data as needed
-	log.Printf("Received verification request: IP=%s, Port=%d, Verified=%t, Notes=%s",
+	log.Printf("Received verification request: IP=%s, Verified=%t",
 		verifyReq.IP, verifyReq.Verified)
 
 	// Look for the local node statuses
