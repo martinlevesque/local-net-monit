@@ -68,12 +68,15 @@ type NetScanner struct {
 	LastPublicFullScanLoop time.Time
 	LastPublicScanLoop     time.Time
 	RecentChanges          []RecentNetworkChange
+	NotifyChangesToChannel bool
 }
 
 func (ns *NetScanner) NotifyChange(change NetworkChange) {
 	change.Timestamp = time.Now()
 
-	ns.NotifyChannel <- change
+	if ns.NotifyChangesToChannel {
+		ns.NotifyChannel <- change
+	}
 }
 
 func (ns *NetScanner) AppendRecentChange(change RecentNetworkChange) {
