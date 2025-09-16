@@ -416,6 +416,10 @@
                         </td>
                         <td>{{ $node.LastPingDuration }}</td>
                         <td class="ports-column">
+                            {{ $hasUnverified := false }} {{ range $port :=
+                            $node.Ports }} {{ if not $port.Verified }} {{
+                            $hasUnverified = true }} {{ end }} {{ end }}
+
                             <div class="port-container">
                                 {{range $port := $node.Ports }}
                                 <div
@@ -428,6 +432,14 @@
                                 </div>
                                 {{end}}
                             </div>
+
+                            {{ if $hasUnverified }}
+                            <div style="margin-top: 10px; text-align: center">
+                                <button onclick="verifyAllPorts('{{ $ip }}')">
+                                    Verify All Ports
+                                </button>
+                            </div>
+                            {{ end }}
                         </td>
                     </tr>
                     {{end}}
@@ -566,18 +578,8 @@
                 );
             }
 
-            // Handle port form submission
-            document.getElementById("port-form").onsubmit = function (e) {
-                e.preventDefault();
-                const verified =
-                    document.getElementById("port-verified").checked;
-                const notes = document.getElementById("port-notes").value;
-                const ip = document.getElementById("port-ip").value;
-                const portNumber = parseInt(
-                    document.getElementById("port-port-number").value,
-                );
-
-                fetch("/ports/verify", {
+            async function verifyPort(ip, portNumber, verified, notes) {
+                return fetch("/ports/verify", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -605,6 +607,20 @@
                     .finally(() => {
                         closePortModal();
                     });
+            }
+
+            // Handle port form submission
+            document.getElementById("port-form").onsubmit = async function (e) {
+                e.preventDefault();
+                const verified =
+                    document.getElementById("port-verified").checked;
+                const notes = document.getElementById("port-notes").value;
+                const ip = document.getElementById("port-ip").value;
+                const portNumber = parseInt(
+                    document.getElementById("port-port-number").value,
+                );
+
+                return verifyPort(ip, portNumber, verified, notes);
             };
 
             // Handle IP name form submission
@@ -661,6 +677,32 @@
                     }
                 }
             };
+
+            async function verifyAllPorts(ip) {
+                return fetch("/ports/verify-all", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        ip: ip,
+                        verified: true,
+                    }),
+                })
+                    .then((response) => {
+                        if (response.ok) {
+                            return response.json();
+                        } else {
+                            throw new Error("Network response was not ok");
+                        }
+                    })
+                    .then((data) => {
+                        location.reload();
+                    })
+                    .catch((error) => {
+                        console.error("Error:", error);
+                    });
+            }
 
             function refreshDashboard() {
                 if (!modalOpened()) {

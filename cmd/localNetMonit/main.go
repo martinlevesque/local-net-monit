@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/martinlevesque/local-net-monit/internal/networking"
-	"github.com/martinlevesque/local-net-monit/internal/web"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/martinlevesque/local-net-monit/internal/networking"
+	"github.com/martinlevesque/local-net-monit/internal/web"
 )
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 		LastLocalScanLoop:      time.Now(),
 		LastPublicFullScanLoop: time.Now().Add(-networking.PublicPortsFullCheckInterval()),
 		LastPublicScanLoop:     time.Now(),
+		NotifyChangesToChannel: true,
 	}
 
 	err := networkScanner.LoadSnapshot()
