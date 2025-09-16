@@ -190,7 +190,6 @@ func handleVerifyAllPorts(netScanner *networking.NetScanner, w http.ResponseWrit
 		return
 	}
 
-	// Process the data as needed
 	log.Printf("Received verification request: IP=%s, Verified=%t",
 		verifyReq.IP, verifyReq.Verified)
 
