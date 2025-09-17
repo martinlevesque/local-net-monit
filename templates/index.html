@@ -322,15 +322,17 @@
         <div class="public-scans-timestamps">
             <p>
                 Last Public Full Scan:
-                <span class="timestamp-to-convert"
-                    >{{ .LastPublicFullScanLoop }}</span
-                >
+                <span
+                    class="human-time"
+                    data-time="{{ .LastPublicFullScanLoop }}"
+                ></span>
             </p>
             <p>
                 Last Public Partial Scan:
-                <span class="timestamp-to-convert"
-                    >{{ .LastPublicScanLoop }}</span
-                >
+                <span
+                    class="human-time"
+                    data-time="{{ .LastPublicScanLoop }}"
+                ></span>
             </p>
         </div>
 
@@ -339,9 +341,10 @@
             <ul>
                 {{range $change := .RecentChanges}}
                 <li>
-                    <span class="timestamp-to-convert"
-                        >{{$change.Timestamp}}</span
-                    >
+                    <span
+                        class="human-time"
+                        data-time="{{$change.Timestamp}}"
+                    ></span>
                     - {{$change.Description}}
                 </li>
                 {{end}}
@@ -351,15 +354,17 @@
         <div class="local-scans-timestamps">
             <p>
                 Last Local Full Scan:
-                <span class="timestamp-to-convert"
-                    >{{ .LastLocalFullScanLoop }}</span
-                >
+                <span
+                    class="human-time"
+                    data-time="{{ .LastLocalFullScanLoop }}"
+                ></span>
             </p>
             <p>
                 Last Local Partial Scan:
-                <span class="timestamp-to-convert"
-                    >{{ .LastLocalScanLoop }}</span
-                >
+                <span
+                    class="human-time"
+                    data-time="{{ .LastLocalScanLoop }}"
+                ></span>
             </p>
         </div>
 
@@ -411,6 +416,13 @@
                                 </span>
                                 <span>
                                     {{if $node.Name}} ({{ $node.Name }}) {{end}}
+                                </span>
+                                <span>
+                                    updated
+                                    <span
+                                        class="human-time"
+                                        data-time="{{ $node.LastOnlineAt }}"
+                                    ></span>
                                 </span>
                             </div>
                         </td>
@@ -676,21 +688,40 @@
                 input.value = "";
             }
 
-            function datetimeStringToLocalDatetimeString(datetimeString) {
-                const date = new Date(datetimeString);
-                return date.toLocaleString();
+            function timeAgo(dateString) {
+                // Parse string into a Date object
+                const date = new Date(dateString);
+                const now = new Date();
+
+                const seconds = Math.floor((now - date) / 1000);
+
+                const intervals = [
+                    { label: "year", seconds: 31536000 },
+                    { label: "month", seconds: 2592000 },
+                    { label: "day", seconds: 86400 },
+                    { label: "hour", seconds: 3600 },
+                    { label: "minute", seconds: 60 },
+                    { label: "second", seconds: 1 },
+                ];
+
+                for (const interval of intervals) {
+                    const count = Math.floor(seconds / interval.seconds);
+                    if (count > 0) {
+                        return count === 1
+                            ? `${count} ${interval.label} ago`
+                            : `${count} ${interval.label}s ago`;
+                    }
+                }
+
+                return "just now";
             }
 
             // On load
-            const timestampElements = document.getElementsByClassName(
-                "timestamp-to-convert",
-            );
 
-            for (const element of timestampElements) {
-                const timestamp = element.textContent;
-                element.textContent =
-                    datetimeStringToLocalDatetimeString(timestamp);
-            }
+            document.querySelectorAll(".human-time").forEach((el) => {
+                const raw = el.getAttribute("data-time");
+                el.textContent = timeAgo(raw);
+            });
         </script>
     </body>
 </html>
