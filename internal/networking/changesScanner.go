@@ -51,6 +51,7 @@ type Port struct {
 type Node struct {
 	IP               string
 	Name             string
+	Verified         bool
 	LastPingDuration time.Duration
 	Ports            []Port
 	Online           bool
@@ -259,10 +260,11 @@ func (node *Node) VerifyPort(port int, verified bool, notes string) bool {
 	return portUpdated
 }
 
-func (node *Node) VerifyIp(name string) bool {
+func (node *Node) VerifyIp(name string, verified bool) bool {
 	updated := false
 
 	node.Name = name
+	node.Verified = verified
 
 	return updated
 }

@@ -90,8 +90,9 @@ type VerifyAllPortsRequest struct {
 }
 
 type VerifyIpRequest struct {
-	IP   string `json:"ip"`
-	Name string `json:"name"`
+	IP       string `json:"ip"`
+	Name     string `json:"name"`
+	Verified bool   `json:"verified"`
 }
 
 func retrieveOriginIP(r *http.Request) string {
@@ -227,8 +228,7 @@ func handleVerifyIp(netScanner *networking.NetScanner, w http.ResponseWriter, r 
 	}
 
 	// Process the data as needed
-	log.Printf("Received verification request: IP=%s, Name=%s",
-		verifyReq.IP, verifyReq.Name)
+	log.Printf("Received verification request: IP=%s, Name=%s", verifyReq.IP, verifyReq.Name)
 
 	ipUpdated := false
 
@@ -236,7 +236,7 @@ func handleVerifyIp(netScanner *networking.NetScanner, w http.ResponseWriter, r 
 	if node, ok := netScanner.NodeStatuses.Load(verifyReq.IP); ok {
 		node := node.(*networking.Node)
 
-		hasUpdated := node.VerifyIp(verifyReq.Name)
+		hasUpdated := node.VerifyIp(verifyReq.Name, verifyReq.Verified)
 
 		netScanner.NotifyChange(networking.NetworkChange{
 			ChangeType:  networking.NetworkChangeIpInfoUpdated,
