@@ -45,7 +45,7 @@ func TestVerifyIp_Success(t *testing.T) {
 		Name: "origname",
 	}
 
-	node.VerifyIp("newname")
+	node.VerifyIp("newname", true)
 
 	if node.Name != "newname" {
 		t.Fatalf("expected to change name")

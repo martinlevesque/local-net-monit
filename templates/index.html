@@ -400,17 +400,17 @@
                     <tr>
                         <td>
                             <div class="ip-display">
-                                {{ if $node.Online }}<span
+                                {{ if $node.Verified }}<span
                                     class="status-dot status-dot-up"
                                 ></span>
-                                {{end}} {{ if not $node.Online }}<span
+                                {{end}} {{ if not $node.Verified }}<span
                                     class="status-dot status-dot-down"
                                 ></span>
                                 {{end}}
 
                                 <span
                                     class="clickable-ip"
-                                    onclick="openIpModal('{{ $ip }}', '{{ $node.Name }}')"
+                                    onclick="openIpModal('{{ $ip }}', '{{ $node.Name }}', '{{ $node.Verified }}' === 'true')"
                                 >
                                     {{ $ip }}
                                 </span>
@@ -504,6 +504,15 @@
                 <form id="ip-form">
                     <input type="hidden" id="ip-address" name="ip-address" />
 
+                    <div class="modal-checkbox-container">
+                        <label for="ip-verified">Verified:</label>
+                        <input
+                            type="checkbox"
+                            id="ip-verified"
+                            name="ip-verified"
+                        />
+                    </div>
+
                     <div class="modal-ip-name-container">
                         <label for="ip-name">Name:</label>
                         <input
@@ -562,11 +571,12 @@
                 }
             }
 
-            function openIpModal(ip, currentName) {
+            function openIpModal(ip, currentName, verified) {
                 document.getElementById("ip-modal-title").textContent =
                     `Configure ${ip}`;
                 document.getElementById("ip-address").value = ip;
                 document.getElementById("ip-name").value = currentName || "";
+                document.getElementById("ip-verified").checked = verified;
                 document.getElementById("ipModal").style.display = "block";
             }
 
@@ -640,6 +650,7 @@
                 e.preventDefault();
                 const ip = document.getElementById("ip-address").value;
                 const name = document.getElementById("ip-name").value;
+                const verified = document.getElementById("ip-verified").checked;
 
                 fetch("/ips/verify", {
                     method: "POST",
@@ -647,8 +658,9 @@
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        ip: ip,
-                        name: name,
+                        ip,
+                        name,
+                        verified,
                     }),
                 })
                     .then((response) => {
