@@ -55,7 +55,7 @@ type Node struct {
 	LastPingDuration time.Duration
 	Ports            []Port
 	Online           bool
-	LastOnlineAt     *time.Time
+	LastOnlineAt     string
 }
 
 type NetScanner struct {
@@ -220,11 +220,10 @@ func loadNode(data map[string]interface{}) *Node {
 
 	}
 
-	var parsedLastOnlineAt *time.Time
+	var lastOnlineAtString string
 	if lastOnlineAt, ok := data["LastOnlineAt"]; ok && lastOnlineAt != nil {
-		parsedTime, err := time.Parse(time.RFC3339, lastOnlineAt.(string))
-		if err == nil {
-			parsedLastOnlineAt = &parsedTime
+		if str, ok := lastOnlineAt.(string); ok {
+			lastOnlineAtString = str
 		}
 	}
 
@@ -239,7 +238,7 @@ func loadNode(data map[string]interface{}) *Node {
 		LastPingDuration: time.Duration(data["LastPingDuration"].(float64)),
 		Ports:            ports,
 		Online:           data["Online"].(bool),
-		LastOnlineAt:     parsedLastOnlineAt,
+		LastOnlineAt:     lastOnlineAtString,
 	}
 
 	return node
@@ -323,11 +322,17 @@ func (ns *NetScanner) VerifyNodeUptimeTimeouts() {
 	ns.NodeStatuses.Range(func(key, untypedNode interface{}) bool {
 		node := untypedNode.(*Node)
 
-		if node.LastOnlineAt == nil {
+		if node.LastOnlineAt == "" {
 			return true
 		}
 
-		if time.Since(*node.LastOnlineAt) > NodeUptimeTimeoutInterval() {
+		lastOnlineTime, err := time.Parse(time.RFC3339, node.LastOnlineAt)
+		if err != nil {
+			log.Printf("Error parsing LastOnlineAt for node %s: %v", node.IP, err)
+			return true
+		}
+
+		if time.Since(lastOnlineTime) > NodeUptimeTimeoutInterval() {
 			ns.NodeStatuses.Delete(key.(string))
 		}
 
@@ -575,6 +580,7 @@ func (ns *NetScanner) fullNetworkPings(localIP net.IP, networkIps []net.IP) {
 func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 	log.Printf("Pinging %s\n", ip.String())
 	now := time.Now()
+	nowString := now.Format(time.RFC3339)
 
 	pingResult, err := ResolvePing(ip.String())
 
@@ -583,8 +589,7 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 		if untypedNode, ok := ns.NodeStatuses.Load(ip.String()); ok {
 			node := untypedNode.(*Node)
 
-			node.Online = true
-			node.LastOnlineAt = &now
+			node.Online = false // Set to false when ping fails
 
 			ns.NotifyChange(NetworkChange{
 				ChangeType:  NetworkChangeTypeNodeDeleted,
@@ -604,7 +609,7 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 		node := untypedNode.(*Node)
 		node.LastPingDuration = pingResult.Duration
 		node.Online = true
-		node.LastOnlineAt = &now
+		node.LastOnlineAt = nowString
 		currrentNode = node
 		ns.NodeStatuses.Store(ip.String(), node)
 
@@ -621,7 +626,7 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 			LastPingDuration: pingResult.Duration,
 			Ports:            []Port{},
 			Online:           true,
-			LastOnlineAt:     &now,
+			LastOnlineAt:     nowString,
 		}
 
 		ns.NodeStatuses.Store(ip.String(), node)
