@@ -237,6 +237,7 @@ func loadNode(data map[string]interface{}) *Node {
 		Name:             name,
 		LastPingDuration: time.Duration(data["LastPingDuration"].(float64)),
 		Ports:            ports,
+		Verified:         data["Verified"].(bool),
 		Online:           data["Online"].(bool),
 		LastOnlineAt:     lastOnlineAtString,
 	}
