@@ -347,6 +347,8 @@ func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *h
 			if !node.Verified {
 				unverified = true
 			}
+
+			return true
 		})
 
 	}
