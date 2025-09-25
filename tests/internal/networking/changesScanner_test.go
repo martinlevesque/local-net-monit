@@ -59,23 +59,27 @@ func TestVerifyNodeUptimeTimeouts_HappyPath(t *testing.T) {
 	recentTime := time.Now().Add(-2 * time.Minute)  // Within the timeout window
 	timeoutTime := time.Now().Add(-200 * time.Hour) // Exceeds the timeout window
 
+	// Convert times to RFC3339 strings as expected by the Node struct
+	recentTimeStr := recentTime.Format(time.RFC3339)
+	timeoutTimeStr := timeoutTime.Format(time.RFC3339)
+
 	// Add nodes to the NodeStatuses map
-	ns.NodeStatuses.Store("node1", &networking.Node{LastOnlineAt: &recentTime})
-	ns.NodeStatuses.Store("node2", &networking.Node{LastOnlineAt: &timeoutTime})
+	ns.NodeStatuses.Store("node1", &networking.Node{LastOnlineAt: recentTimeStr})
+	ns.NodeStatuses.Store("node2", &networking.Node{LastOnlineAt: timeoutTimeStr})
 
 	ns.VerifyNodeUptimeTimeouts()
 
 	// Check that node1 is still in the map
-	_, ok1 := ns.NodeStatuses.Load("node1")
+	_, node1Ok := ns.NodeStatuses.Load("node1")
 
-	if !ok1 {
+	if !node1Ok {
 		t.Errorf("node1 should not have been deleted")
 	}
 
 	// Check that node2 has been removed from the map
-	_, ok2 := ns.NodeStatuses.Load("node2")
+	_, node2Ok := ns.NodeStatuses.Load("node2")
 
-	if ok2 {
+	if node2Ok {
 		t.Errorf("node2 should have been deleted due to timeout")
 	}
 }

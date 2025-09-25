@@ -361,7 +361,7 @@ func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *h
 
 	if unverified {
 		statusBody.Status = "NOK"
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusOK)
 
