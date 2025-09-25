@@ -314,13 +314,14 @@ type ResponseStatus struct {
 func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *http.Request) {
 	envVarStatusPublicPorts := env.EnvVar("STATUS_PUBLIC_PORTS", "true")
 	envVarStatusLocalPorts := env.EnvVar("STATUS_LOCAL_PORTS", "false")
+	envVarStatusLocalIps := env.EnvVar("STATUS_LOCAL_IPS", "false")
 
-	hasUnverifiedPorts := false
+	unverified := false
 
 	if envVarStatusPublicPorts == "true" {
 		for _, port := range netScanner.PublicNode.Ports {
 			if !port.Verified {
-				hasUnverifiedPorts = true
+				unverified = true
 			}
 		}
 	}
@@ -331,12 +332,23 @@ func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *h
 
 			for _, port := range node.Ports {
 				if !port.Verified {
-					hasUnverifiedPorts = true
+					unverified = true
 				}
 			}
 
 			return true
 		})
+	}
+
+	if envVarStatusLocalIps == "true" {
+		netScanner.NodeStatuses.Range(func(key, value interface{}) bool {
+			node := value.(*networking.Node)
+
+			if !node.Verified {
+				unverified = true
+			}
+		})
+
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -345,7 +357,7 @@ func handleStatus(netScanner *networking.NetScanner, w http.ResponseWriter, _ *h
 		Status: "OK",
 	}
 
-	if hasUnverifiedPorts {
+	if unverified {
 		statusBody.Status = "NOK"
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	} else {
