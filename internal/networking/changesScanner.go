@@ -641,7 +641,6 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 
 func (ns *NetScanner) scanPorts(node *Node) {
 	for port := 1; port <= 65535; port++ {
-		log.Printf("Looking for port %d %s \n", port, node.IP)
 
 		if isTCPPortOpen(node.IP, port) {
 			log.Printf("Port tcp %d is open on %s\n", port, node.IP)
