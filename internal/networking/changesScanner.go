@@ -545,21 +545,14 @@ func (ns *NetScanner) currentNetworkIps() []net.IP {
 
 func (ns *NetScanner) scanLoop(localIP net.IP, networkIps []net.IP) {
 	ns.fullNetworkPings(localIP, networkIps)
-	var wg sync.WaitGroup
 
 	ns.NodeStatuses.Range(func(_, untypedNode any) bool {
-		wg.Add(1)
 		if node, ok := untypedNode.(*Node); ok {
-			go func(node *Node) {
-				defer wg.Done()
-				ns.scanPorts(node)
-			}(node)
+			ns.scanPorts(node)
 		}
 
 		return true
 	})
-
-	wg.Wait()
 }
 
 func (ns *NetScanner) fullNetworkPings(localIP net.IP, networkIps []net.IP) {
@@ -648,6 +641,8 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 
 func (ns *NetScanner) scanPorts(node *Node) {
 	for port := 1; port <= 65535; port++ {
+		log.Printf("Looking for port %d %s \n", port, node.IP)
+
 		if isTCPPortOpen(node.IP, port) {
 			log.Printf("Port tcp %d is open on %s\n", port, node.IP)
 
