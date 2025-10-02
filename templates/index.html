@@ -607,6 +607,7 @@
                         </div>
                     </div>
                     <div class="scans-info">
+                        {{if .MonitorPublicPorts}}
                         <div class="scan-timestamp">
                             <span class="scan-label">Public Full Scan</span>
                             <span
@@ -621,6 +622,7 @@
                                 data-time="{{ .LastPublicScanLoop }}"
                             ></span>
                         </div>
+                        {{end}}
                         <div class="scan-timestamp">
                             <span class="scan-label">Local Full Scan</span>
                             <span
@@ -641,6 +643,7 @@
         </div>
 
         <!-- Internet Section -->
+        {{if .MonitorPublicPorts}}
         <div class="internet-section">
             <div class="container">
                 <div class="section-title">Internet Ports</div>
@@ -662,6 +665,7 @@
                 </div>
             </div>
         </div>
+        {{end}}
 
         <!-- Local Network Section -->
         <div class="local-section">

@@ -288,6 +288,7 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 		ScannerNodeIP          string
 		WebSocketUrl           string
 		RecentChanges          []networking.RecentNetworkChange
+		MonitorPublicPorts     bool
 	}{
 		NetScanner:             netScanner,
 		NodeStatuses:           nodeStatuses,
@@ -297,6 +298,7 @@ func handleRoot(netScanner *networking.NetScanner, templates map[string]*templat
 		LastLocalScanLoop:      netScanner.LastLocalScanLoop.Format(time.RFC3339),
 		ScannerNodeIP:          scannerNodeIP,
 		RecentChanges:          netScanner.RecentChanges,
+		MonitorPublicPorts:     env.EnvVar("MONITOR_PUBLIC_PORTS", "true") == "true",
 	}
 
 	err := tmpl.Execute(w, data)
