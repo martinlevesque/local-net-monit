@@ -270,7 +270,7 @@ func (node *Node) VerifyIp(name string, verified bool) bool {
 }
 
 func LocalPortsFullCheckInterval() time.Duration {
-	return time.Duration(env.EnvVarInt("LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES", 120)) * time.Minute
+	return time.Duration(env.EnvVarInt("LOCAL_PORTS_FULL_CHECK_INTERVAL_MINUTES", 60)) * time.Minute
 }
 
 func PublicPortsFullCheckInterval() time.Duration {
@@ -279,6 +279,14 @@ func PublicPortsFullCheckInterval() time.Duration {
 
 func NodeUptimeTimeoutInterval() time.Duration {
 	return time.Duration(env.EnvVarInt("NODE_UPTIME_TIMEOUT_HOURS", 128)) * time.Hour
+}
+
+func FullPortScanBatchSize() int {
+	return env.EnvVarInt("FULL_PORT_SCAN_BATCH_SIZE", 100)
+}
+
+func PortScanWorkers() int {
+	return env.EnvVarInt("PORT_SCAN_WORKERS", 20)
 }
 
 func (ns *NetScanner) Scan() {
@@ -639,37 +647,95 @@ func (ns *NetScanner) pingIp(localIP net.IP, ip net.IP) {
 	}
 }
 
-func (ns *NetScanner) scanPorts(node *Node) {
-	for port := 1; port <= 65535; port++ {
+type portResult struct {
+	port   int
+	isOpen bool
+}
 
-		if isTCPPortOpen(node.IP, port) {
-			log.Printf("Port tcp %d is open on %s\n", port, node.IP)
+func (ns *NetScanner) scanPortBatch(node *Node, batchStart, batchEnd int, maxWorkers int) []portResult {
+	// Create buffered channel for results to avoid blocking goroutines
+	resultsChannel := make(chan portResult, maxWorkers)
 
-			if !portExistsInList(port, node.Ports) {
-				node.Ports = append(
-					node.Ports,
-					Port{PortNumber: port, Verified: false, Notes: ""},
-				)
-				ns.NotifyChange(NetworkChange{
-					ChangeType:  NetworkChangePortUpdated,
-					Description: fmt.Sprintf("Node %s updated, port %d added", node.IP, port),
-					UpdatedNode: node,
-					DeletedNode: nil,
-				})
-			}
-		} else {
-			if portExistsInList(port, node.Ports) {
-				node.Ports = slices.DeleteFunc(node.Ports, func(p Port) bool {
-					return p.PortNumber == port
-				})
+	// Semaphore pattern: limit concurrent workers to avoid overwhelming the network
+	workerSemaphore := make(chan struct{}, maxWorkers)
 
-				ns.NotifyChange(NetworkChange{
-					ChangeType:  NetworkChangePortUpdated,
-					Description: fmt.Sprintf("Node %s updated, port %d removed", node.IP, port),
-					UpdatedNode: node,
-					DeletedNode: nil,
-				})
-			}
+	var waitGroup sync.WaitGroup
+
+	// Launch a goroutine for each port in the batch
+	for portNumber := batchStart; portNumber <= batchEnd; portNumber++ {
+		waitGroup.Add(1)
+
+		go func(currentPort int) {
+			defer waitGroup.Done()
+
+			// Acquire semaphore slot (blocks if maxWorkers already running)
+			workerSemaphore <- struct{}{}
+			defer func() { <-workerSemaphore }() // Release slot when done
+
+			// Check if port is open and send result
+			isPortOpen := isTCPPortOpen(node.IP, currentPort)
+			resultsChannel <- portResult{port: currentPort, isOpen: isPortOpen}
+		}(portNumber)
+	}
+
+	// Close results channel once all goroutines complete
+	go func() {
+		waitGroup.Wait()
+		close(resultsChannel)
+	}()
+
+	// Collect all results from the channel
+	batchResults := []portResult{}
+
+	for scanResult := range resultsChannel {
+		batchResults = append(batchResults, scanResult)
+	}
+
+	return batchResults
+}
+
+func (ns *NetScanner) handlePortResult(node *Node, result portResult) {
+	if result.isOpen {
+		log.Printf("Port tcp %d is open on %s\n", result.port, node.IP)
+
+		if !portExistsInList(result.port, node.Ports) {
+			node.Ports = append(node.Ports, Port{PortNumber: result.port, Verified: false, Notes: ""})
+			ns.NotifyChange(NetworkChange{
+				ChangeType:  NetworkChangePortUpdated,
+				Description: fmt.Sprintf("Node %s updated, port %d added", node.IP, result.port),
+				UpdatedNode: node,
+			})
 		}
+	} else {
+		if portExistsInList(result.port, node.Ports) {
+			node.Ports = slices.DeleteFunc(node.Ports, func(p Port) bool {
+				return p.PortNumber == result.port
+			})
+			ns.NotifyChange(NetworkChange{
+				ChangeType:  NetworkChangePortUpdated,
+				Description: fmt.Sprintf("Node %s updated, port %d removed", node.IP, result.port),
+				UpdatedNode: node,
+			})
+		}
+	}
+}
+
+func (ns *NetScanner) scanPorts(node *Node) {
+	batchSize := FullPortScanBatchSize()
+	workers := PortScanWorkers()
+
+	for batchStart := 1; batchStart <= 65535; batchStart += batchSize {
+		batchEnd := batchStart + batchSize - 1
+		if batchEnd > 65535 {
+			batchEnd = 65535
+		}
+
+		results := ns.scanPortBatch(node, batchStart, batchEnd, workers)
+
+		for _, result := range results {
+			ns.handlePortResult(node, result)
+		}
+
+		time.Sleep(50 * time.Millisecond)
 	}
 }
