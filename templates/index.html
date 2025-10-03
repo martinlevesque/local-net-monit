@@ -652,7 +652,7 @@
                     <div
                         title="{{$port.Notes}}"
                         class="port-box {{if not $port.Verified}}port-box-warning{{end}}"
-                        onclick="openPortModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}'})"
+                        onclick="openPortModal({ ip: '{{ $.NetScanner.PublicNode.IP }}', portNumber: {{ $port.PortNumber }}, verified: {{ $port.Verified }}, notes: '{{ $port.Notes }}', lastSeenAt: '{{ $port.LastSeenAt }}'})"
                     >
                         <div class="port-number">{{ $port.PortNumber }}</div>
                         <div class="port-label">
@@ -795,7 +795,7 @@
                                         <div
                                             title="{{if $port.Notes}}{{$port.Notes}}{{else}}Port {{$port.PortNumber}}{{end}}"
                                             class="port-box {{ if not $port.Verified }}port-box-warning{{end}}"
-                                            onclick="openPortModal({ ip: '{{ $ip }}', portNumber: {{ $port.PortNumber }}, notes: '{{ $port.Notes }}', verified: {{ $port.Verified }}})"
+                                            onclick="openPortModal({ ip: '{{ $ip }}', portNumber: {{ $port.PortNumber }}, notes: '{{ $port.Notes }}', verified: {{ $port.Verified }}, lastSeenAt: '{{ $port.LastSeenAt }}'})"
                                         >
                                             <div class="port-number">
                                                 {{ $port.PortNumber }}
@@ -859,6 +859,11 @@
                             rows="4"
                             cols="50"
                         ></textarea>
+                    </div>
+
+                    <div class="modal-port-notes-container">
+                        <label for="port-last-seen">Last Seen:</label>
+                        <div id="port-last-seen" style="padding: 12px; background-color: #1e1e1e; border-radius: 6px; color: #a0a0a0;"></div>
                     </div>
 
                     <button type="submit">Save</button>
@@ -926,6 +931,14 @@
                 document.getElementById("port-ip").value = info.ip;
                 document.getElementById("port-port-number").value =
                     info.portNumber;
+
+                const lastSeenEl = document.getElementById("port-last-seen");
+                if (info.lastSeenAt && info.lastSeenAt !== '') {
+                    lastSeenEl.textContent = timeAgo(info.lastSeenAt);
+                } else {
+                    lastSeenEl.textContent = 'Never';
+                }
+
                 document.getElementById("portModal").style.display = "block";
             }
 

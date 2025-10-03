@@ -46,6 +46,7 @@ type Port struct {
 	PortNumber int
 	Verified   bool
 	Notes      string
+	LastSeenAt string
 }
 
 type Node struct {
@@ -81,10 +82,10 @@ func (ns *NetScanner) NotifyChange(change NetworkChange) {
 }
 
 func (ns *NetScanner) AppendRecentChange(change RecentNetworkChange) {
-	ns.RecentChanges = append(ns.RecentChanges, change)
+	ns.RecentChanges = append([]RecentNetworkChange{change}, ns.RecentChanges...)
 
 	if len(ns.RecentChanges) > 10 {
-		ns.RecentChanges = ns.RecentChanges[1:]
+		ns.RecentChanges = ns.RecentChanges[:10]
 	}
 }
 
@@ -212,10 +213,26 @@ func loadNode(data map[string]interface{}) *Node {
 
 	for i, portData := range portsData {
 		port := portData.(map[string]interface{})
+
+		var lastSeenAtString string
+		if lastSeenAt, ok := port["LastSeenAt"]; ok && lastSeenAt != nil {
+			if str, ok := lastSeenAt.(string); ok {
+				lastSeenAtString = str
+			}
+		}
+
+		var notesString string
+		if notes, ok := port["Notes"]; ok && notes != nil {
+			if str, ok := notes.(string); ok {
+				notesString = str
+			}
+		}
+
 		ports[i] = Port{
 			PortNumber: int(port["PortNumber"].(float64)),
 			Verified:   port["Verified"].(bool),
-			Notes:      port["Notes"].(string),
+			Notes:      notesString,
+			LastSeenAt: lastSeenAtString,
 		}
 
 	}
@@ -500,14 +517,26 @@ func (ns *NetScanner) checkPublicNodePorts(ports []int) {
 
 	wg.Wait()
 
+	now := time.Now()
+	nowString := now.Format(time.RFC3339)
+
 	for port, resultPublicOpen := range resultMap {
 		if resultPublicOpen {
 			log.Printf("Port tcp %d is open on %s\n", port, ns.PublicNode.IP)
 
-			if !portExistsInList(port, ns.PublicNode.Ports) {
+			portExists := false
+			for i, currentPort := range ns.PublicNode.Ports {
+				if currentPort.PortNumber == port {
+					ns.PublicNode.Ports[i].LastSeenAt = nowString
+					portExists = true
+					break
+				}
+			}
+
+			if !portExists {
 				ns.PublicNode.Ports = append(
 					ns.PublicNode.Ports,
-					Port{PortNumber: port, Verified: false},
+					Port{PortNumber: port, Verified: false, LastSeenAt: nowString},
 				)
 
 				ns.NotifyChange(NetworkChange{
@@ -518,17 +547,21 @@ func (ns *NetScanner) checkPublicNodePorts(ports []int) {
 				})
 			}
 		} else {
-			if portExistsInList(port, ns.PublicNode.Ports) {
-				ns.PublicNode.Ports = slices.DeleteFunc(ns.PublicNode.Ports, func(p Port) bool {
-					return p.PortNumber == port
-				})
+			// Only delete port if it has exceeded the timeout
+			for _, currentPort := range ns.PublicNode.Ports {
+				if currentPort.PortNumber == port && shouldDeletePort(currentPort) {
+					ns.PublicNode.Ports = slices.DeleteFunc(ns.PublicNode.Ports, func(p Port) bool {
+						return p.PortNumber == port
+					})
 
-				ns.NotifyChange(NetworkChange{
-					ChangeType:  NetworkChangeTypeNodeUpdated,
-					Description: fmt.Sprintf("Node %s detect port %d closed", ns.PublicNode.IP, port),
-					UpdatedNode: ns.PublicNode,
-					DeletedNode: nil,
-				})
+					ns.NotifyChange(NetworkChange{
+						ChangeType:  NetworkChangeTypeNodeUpdated,
+						Description: fmt.Sprintf("Node %s detect port %d closed", ns.PublicNode.IP, port),
+						UpdatedNode: ns.PublicNode,
+						DeletedNode: nil,
+					})
+					break
+				}
 			}
 		}
 	}
@@ -694,12 +727,37 @@ func (ns *NetScanner) scanPortBatch(node *Node, batchStart, batchEnd int, maxWor
 	return batchResults
 }
 
+func shouldDeletePort(port Port) bool {
+	if port.LastSeenAt == "" {
+		return false
+	}
+
+	lastSeenTime, err := time.Parse(time.RFC3339, port.LastSeenAt)
+	if err != nil {
+		return false
+	}
+
+	return time.Since(lastSeenTime) > NodeUptimeTimeoutInterval()
+}
+
 func (ns *NetScanner) handlePortResult(node *Node, result portResult) {
+	now := time.Now()
+	nowString := now.Format(time.RFC3339)
+
 	if result.isOpen {
 		log.Printf("Port tcp %d is open on %s\n", result.port, node.IP)
 
-		if !portExistsInList(result.port, node.Ports) {
-			node.Ports = append(node.Ports, Port{PortNumber: result.port, Verified: false, Notes: ""})
+		portExists := false
+		for i, currentPort := range node.Ports {
+			if currentPort.PortNumber == result.port {
+				node.Ports[i].LastSeenAt = nowString
+				portExists = true
+				break
+			}
+		}
+
+		if !portExists {
+			node.Ports = append(node.Ports, Port{PortNumber: result.port, Verified: false, Notes: "", LastSeenAt: nowString})
 			ns.NotifyChange(NetworkChange{
 				ChangeType:  NetworkChangePortUpdated,
 				Description: fmt.Sprintf("Node %s updated, port %d added", node.IP, result.port),
@@ -707,15 +765,19 @@ func (ns *NetScanner) handlePortResult(node *Node, result portResult) {
 			})
 		}
 	} else {
-		if portExistsInList(result.port, node.Ports) {
-			node.Ports = slices.DeleteFunc(node.Ports, func(p Port) bool {
-				return p.PortNumber == result.port
-			})
-			ns.NotifyChange(NetworkChange{
-				ChangeType:  NetworkChangePortUpdated,
-				Description: fmt.Sprintf("Node %s updated, port %d removed", node.IP, result.port),
-				UpdatedNode: node,
-			})
+		// Only delete port if it has exceeded the timeout
+		for _, currentPort := range node.Ports {
+			if currentPort.PortNumber == result.port && shouldDeletePort(currentPort) {
+				node.Ports = slices.DeleteFunc(node.Ports, func(p Port) bool {
+					return p.PortNumber == result.port
+				})
+				ns.NotifyChange(NetworkChange{
+					ChangeType:  NetworkChangePortUpdated,
+					Description: fmt.Sprintf("Node %s updated, port %d removed", node.IP, result.port),
+					UpdatedNode: node,
+				})
+				break
+			}
 		}
 	}
 }
